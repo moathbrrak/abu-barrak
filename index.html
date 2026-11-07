@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="أبو براك">
+<meta name="apple-mobile-web-app-title" content="اخايله">
 <meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="preconnect" href="https://api.rainviewer.com" crossorigin>
 <link rel="preconnect" href="https://tilecache.rainviewer.com" crossorigin>
 <link rel="preconnect" href="https://view.eumetsat.int" crossorigin>
-<title>أبو براك – ملخص المطر والسحب</title>
+<title>اخايله – المطر والرادار</title>
 <style>
   .tabs{display:flex;gap:6px;margin-bottom:10px}
   .tab{flex:1;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px;color:var(--tx);font-size:15px;cursor:pointer}
@@ -99,7 +102,7 @@
 </head>
 <body>
 <header>
-  <h1>🌧️ أبو براك</h1>
+  <h1><img src="apple-touch-icon.png" alt="" style="width:30px;height:30px;border-radius:8px;vertical-align:middle;margin-inline-end:6px">اخايله</h1>
   <button class="btn" id="addBtn">＋ مدينة</button>
   <button class="btn" id="gpsBtn" title="موقعي">📍</button>
   <button class="btn" id="refBtn">⟳</button>
@@ -741,7 +744,7 @@ $('tShot').onclick = async () => {
     const stamp = t.toLocaleString('ar-SA-u-nu-latn',{dateStyle:'medium',timeStyle:'short'});
     x.fillStyle='#121b2e'; x.fillRect(0,0,W,HEAD); x.fillStyle='#e8eefc'; x.font='bold 15px sans-serif'; x.textAlign='right'; x.direction='rtl';
     x.fillText(`📡 رادار ${rd[1]} (${rd[0]}) · ${stamp}`, W-10, 27);
-    x.textAlign='left'; x.font='11px sans-serif'; x.fillStyle='#8a9bbd'; x.fillText('أبو براك · RainViewer · EUMETSAT', 10, 27);
+    x.textAlign='left'; x.font='11px sans-serif'; x.fillStyle='#8a9bbd'; x.fillText('اخايله · RainViewer · EUMETSAT', 10, 27);
     const pad = n=>String(n).padStart(2,'0');
     const fname = `رادار-${rd[1]}-${rd[0]}-${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}_${pad(t.getHours())}-${pad(t.getMinutes())}.png`.replace(/\s+/g,'_');
     const blob = await new Promise((ok,no)=>{ try{ cv.toBlob(b=>b?ok(b):no(new Error('blob')), 'image/png'); }catch(e){ no(e); } });
@@ -752,6 +755,11 @@ $('tShot').onclick = async () => {
   }catch(e){ if(e.name!=='AbortError') btn.textContent = '📷 تعذّر الحفظ'; else btn.textContent='📷 حفظ صورة الرصد'; }
   setTimeout(()=>btn.textContent='📷 حفظ صورة الرصد', 3000);
 };
+
+// تسجيل الـService Worker: يخلّي التطبيق يفتح بدون نت ويوصله التحديث على طول
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 
 renderChips();
 load();
