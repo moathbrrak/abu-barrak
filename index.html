@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
 <link rel="preconnect" href="https://api.rainviewer.com" crossorigin>
 <link rel="preconnect" href="https://tilecache.rainviewer.com" crossorigin>
+<link rel="preconnect" href="https://view.eumetsat.int" crossorigin>
 <title>أبو براك – ملخص المطر والسحب</title>
 <style>
   .tabs{display:flex;gap:6px;margin-bottom:10px}
@@ -23,7 +24,14 @@
   .legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mut);margin-top:8px;direction:ltr}
   .legend .g{flex:1;height:10px;border-radius:5px;direction:ltr;
     background:linear-gradient(90deg,#88ddee,#0099cc,#0077aa,#005588,#ffee00,#ffaa00,#ff4400,#c10000,#ffaaff,#ff77ff)}
-  .leaflet-container{background:#0b1220}
+  .leaflet-container{background:#0b1220 !important}
+  .lyr{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
+  .lyr button{white-space:nowrap;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:6px 11px;font-size:13px;color:var(--mut);cursor:pointer}
+  .lyr button.on{background:#1d3357;border-color:var(--acc);color:var(--tx)}
+  .ages{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .ages span{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px 8px;font-size:12px;color:var(--mut)}
+  .ages b{color:var(--tx);font-weight:600}
+  .ages .old{color:var(--warn)}
   :root{
     --bg:#0b1220; --card:#121b2e; --card2:#17223a; --line:#24314d;
     --tx:#e8eefc; --mut:#8a9bbd; --acc:#4da3ff; --rain:#3ddc97; --warn:#ffb547; --bad:#ff5c7a;
@@ -96,6 +104,7 @@
 </div>
 <div id="app"><div class="card"><span class="spin">⟳</span> جاري التحميل…</div></div>
 <div id="radarView">
+  <div class="lyr" id="lyr"></div>
   <div id="map"></div>
   <div class="rctl">
     <button class="btn" id="rPlay">▶</button>
@@ -103,9 +112,10 @@
     <span class="rtime" id="rTime">—</span>
   </div>
   <div class="legend"><span>خفيف</span><div class="g"></div><span>غزير / برد</span></div>
-  <div class="sub" id="rNote" style="margin-top:6px">رادارات أرضية (المركز الوطني للأرصاد عبر RainViewer) · آخر ساعتين · كل 10 دقائق</div>
+  <div class="ages" id="ages"></div>
+  <div class="sub" id="rNote" style="margin-top:6px"></div>
 </div>
-<footer>البيانات: Open-Meteo (نماذج ECMWF · GFS · ICON) — نفس النماذج اللي يعرضها Windy</footer>
+<footer>البيانات: Open-Meteo (نماذج ECMWF · GFS · ICON) · رادار RainViewer · أقمار EUMETSAT</footer>
 
 <script>
 const MODELS = [
@@ -338,7 +348,7 @@ document.querySelector('.tabs').onclick = e => {
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b===t));
   $('app').style.display = view==='sum' ? '' : 'none';
   $('radarView').style.display = view==='radar' ? 'block' : 'none';
-  if(view==='radar') openRadar(); else stopPlay();
+  if(view==='radar') openRadar(); else { stopPlay(); clearInterval(liveTimer); }
 };
 let leafletP = null;
 function loadLeaflet(){
@@ -353,6 +363,79 @@ function loadLeaflet(){
   });
   return leafletP;
 }
+// الطبقات: الرادار الأرضي + أقمار EUMETSAT (تغطي المملكة كلها حتى المناطق اللي ما يوصلها رادار)
+const EUM = 'https://view.eumetsat.int/geoserver/';
+const LYR = {
+  rad: {name:'📡 رادار',            def:true},
+  sat: {name:'🛰️ مطر بالقمر',        def:true,  ws:'mtg_fd',  id:'h40b',        op:0.85, z:8,  every:10},
+  rdt: {name:'⛈️ عواصف نامية',      def:true,  ws:'msg_fes', id:'rdt',         op:1,    z:25, every:15},
+  li:  {name:'⚡ برق',               def:true,  ws:'mtg_fd',  id:'li_afa',      op:1,    z:30, every:5},
+  ir:  {name:'☁️ سحب',               def:false, ws:'mtg_fd',  id:'ir105_hrfi',  op:0.35, z:4,  every:10},
+  cov: {name:'⭕ تغطية الرادار',      def:false},
+};
+let lyrOn = ls.get('lyrOn', Object.fromEntries(Object.entries(LYR).map(([k,v])=>[k,v.def])));
+const wms = {}, wmsTime = {};
+let rvHost = null, covLayer = null, liveTimer = null;
+
+function renderLyr(){
+  $('lyr').innerHTML = Object.entries(LYR).map(([k,v])=>`<button data-k="${k}" class="${lyrOn[k]?'on':''}">${v.name}</button>`).join('')
+    + `<button data-k="ksa">🗺️ المملكة</button>`;
+}
+$('lyr').onclick = e => {
+  const b = e.target.closest('button'); if(!b || !map) return;
+  const k = b.dataset.k;
+  if(k==='ksa'){ map.fitBounds([[16,34.5],[32.3,55.7]]); return; }
+  lyrOn[k] = !lyrOn[k]; ls.set('lyrOn', lyrOn); renderLyr(); applyLyr();
+};
+function applyLyr(){
+  for(const k of ['sat','rdt','li','ir']){
+    if(lyrOn[k] && wms[k] && !map.hasLayer(wms[k])) wms[k].addTo(map);
+    if(!lyrOn[k] && wms[k] && map.hasLayer(wms[k])) map.removeLayer(wms[k]);
+  }
+  if(rvHost){
+    if(!covLayer) covLayer = L.tileLayer(`${rvHost}/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png`, {opacity:0.3, zIndex:3, maxNativeZoom:7, maxZoom:12});
+    if(lyrOn.cov && !map.hasLayer(covLayer)) covLayer.addTo(map);
+    if(!lyrOn.cov && map.hasLayer(covLayer)) map.removeLayer(covLayer);
+  }
+  if(!lyrOn.rad) stopPlay();
+  show(fi);
+  renderAges();
+}
+
+// آخر وقت متاح لكل طبقة قمر صناعي (ملف صغير ~7KB لكل طبقة)
+async function satTime(k){
+  const v = LYR[k];
+  const r = await fetch(`${EUM}${v.ws}/${v.id}/ows?service=WMS&version=1.3.0&request=GetCapabilities`);
+  const t = await r.text();
+  const dim = (t.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)</)||[])[1] || '';
+  const last = dim.split(',').pop().split('/');
+  return last.length===3 ? last[1] : last[0];
+}
+async function loadSat(){
+  await Promise.all(['sat','rdt','li','ir'].map(async k=>{
+    try{
+      const t = await satTime(k);
+      if(!t || wmsTime[k]===t) return;
+      wmsTime[k] = t;
+      if(wms[k]) wms[k].setParams({time:t});
+      else wms[k] = L.tileLayer.wms(EUM+'wms', {layers:`${LYR[k].ws}:${LYR[k].id}`, format:'image/png', transparent:true,
+        version:'1.3.0', time:t, tileSize:512, opacity:LYR[k].op, zIndex:LYR[k].z, attribution:'© EUMETSAT'});
+    }catch(e){ /* طبقة وحدة فشلت ما توقف الباقي */ }
+  }));
+  applyLyr();
+}
+
+const ago = iso => { const m = Math.round((Date.now()-new Date(iso).getTime())/60000); return m<1?'الحين':m<60?`قبل ${m} د`:`قبل ${Math.floor(m/60)} س ${m%60} د`; };
+function renderAges(){
+  const items = [];
+  if(lyrOn.rad && frames.length) items.push(['📡 الرادار', new Date(frames.at(-1).time*1000).toISOString(), 25]);
+  for(const k of ['sat','rdt','li','ir']) if(lyrOn[k] && wmsTime[k]) items.push([LYR[k].name.split(' ')[0]+' '+LYR[k].name.split(' ').slice(1).join(' '), wmsTime[k], LYR[k].every*3]);
+  $('ages').innerHTML = items.map(([n,t,lim])=>{
+    const m=(Date.now()-new Date(t).getTime())/60000;
+    return `<span>${n}: <b class="${m>lim?'old':''}">${ago(t)}</b></span>`;
+  }).join('');
+}
+
 async function openRadar(){
   const c = cities[cur];
   if(!window.L){
@@ -360,44 +443,62 @@ async function openRadar(){
     try{ await loadLeaflet(); }catch(e){ $('rNote').textContent='تعذّر تحميل مكتبة الخريطة — تأكد من الاتصال.'; return; }
   }
   if(!map){
-    map = L.map('map', {zoomControl:true, attributionControl:true}).setView([c.lat,c.lon], 7);
+    renderLyr();
+    map = L.map('map', {zoomControl:true, attributionControl:true}).setView([c.lat,c.lon], 6);
     const esri = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
     L.tileLayer(esri+'World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 12, attribution:'© Esri · Radar © RainViewer'
     }).addTo(map);
-    L.tileLayer(esri+'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom:12, zIndex:20}).addTo(map); // أسماء المدن فوق المطر
+    L.tileLayer(esri+'World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}', {maxZoom:12, zIndex:40}).addTo(map); // أسماء المدن فوق كل شي
     setTimeout(()=>map.invalidateSize(), 50);
   } else { map.setView([c.lat,c.lon], Math.max(map.getZoom(),6)); setTimeout(()=>map.invalidateSize(), 50); }
   if(cityMark) cityMark.remove();
-  cityMark = L.circleMarker([c.lat,c.lon], {radius:6, color:'#fff', weight:2, fillColor:'#4da3ff', fillOpacity:1}).addTo(map).bindTooltip(c.name);
-  if(Date.now() - radarAt > 5*60e3) loadRadar();   // يحدّث إذا مرّ أكثر من 5 دقائق
+  cityMark = L.circleMarker([c.lat,c.lon], {radius:6, color:'#fff', weight:2, fillColor:'#4da3ff', fillOpacity:1, pane:'markerPane'}).addTo(map).bindTooltip(c.name);
+  if(Date.now() - radarAt > 2*60e3){ loadRadar(); loadSat(); }
+  startLive();
 }
-async function loadRadar(){
+
+// رصد مباشر: وهو مفتوح يشيك كل دقيقتين على إطار جديد، ويحمّله أول ما ينشر
+function startLive(){
+  clearInterval(liveTimer);
+  liveTimer = setInterval(async ()=>{
+    if(view!=='radar' || document.visibilityState!=='visible') return;
+    try{
+      const j = await getJSON('https://api.rainviewer.com/public/weather-maps.json');
+      if(!frames.length || j.radar.past.at(-1).time > frames.at(-1).time) loadRadar(j);
+    }catch(e){}
+    loadSat();
+    renderAges();
+  }, 120e3);
+}
+
+async function loadRadar(pre){
   try{
-    $('rNote').textContent='جاري جلب الرادار…';
-    const j = await getJSON('https://api.rainviewer.com/public/weather-maps.json');
-    radarAt = Date.now();
+    if(!frames.length) $('rNote').textContent='جاري جلب الرادار…';
+    const j = pre || await getJSON('https://api.rainviewer.com/public/weather-maps.json');
+    radarAt = Date.now(); rvHost = j.host;
+    const wasPlaying = !!timer; stopPlay();
     layers.forEach(l=>l&&map.removeLayer(l));
     frames = j.radar.past; // الخطة المجانية: ماضي فقط
-    // تحميل مسبق لكل الإطارات (شفافة) عشان التشغيل يكون سلس بدون انتظار
     const mk = f => L.tileLayer(`${j.host}${f.path}/256/{z}/{x}/{y}/2/1_1.png`, {
       tileSize:256, opacity:0, zIndex:10, maxNativeZoom:7, maxZoom:12   // أقصى دقة مجانية = تكبير 7
     });
-    // أحدث إطار أول، وبعده الباقي بالتدريج (ما نحمّل كل شي دفعة وحدة)
+    // أحدث إطار أول، وبعده الباقي بالتدريج
     layers = new Array(frames.length);
     const last = frames.length-1;
     layers[last] = mk(frames[last]).addTo(map);
     $('rSlider').max = last;
     show(last);
-    $('rNote').textContent='رادارات أرضية (المركز الوطني للأرصاد عبر RainViewer) · آخر ساعتين · كل 10 دقائق';
+    $('rNote').textContent='📡 رادارات أرضية عبر RainViewer (كل 10 د) · 🛰️⛈️⚡☁️ أقمار EUMETSAT (كل 5–15 د) وتغطي المناطق اللي ما يوصلها رادار · يتحدث تلقائياً وهو مفتوح';
     let k = last-1;
-    const next = () => { if(k<0) return; layers[k] = mk(frames[k]).addTo(map); k--; setTimeout(next, 250); };
+    const next = () => { if(k<0){ if(wasPlaying) $('rPlay').click(); return; } layers[k] = mk(frames[k]).addTo(map); k--; setTimeout(next, 250); };
     setTimeout(next, 800);
+    applyLyr();
   }catch(e){ $('rNote').textContent = 'تعذّر جلب بيانات الرادار ('+e.message+')'; }
 }
 function show(i){
   if(!frames.length) return;
-  layers.forEach((l,k)=>l&&l.setOpacity(k===i?0.75:0));
+  layers.forEach((l,k)=>l&&l.setOpacity(lyrOn.rad && k===i?0.75:0));
   fi = i; $('rSlider').value = i;
   const t = new Date(frames[i].time*1000);
   $('rTime').textContent = t.toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
@@ -405,6 +506,7 @@ function show(i){
 function stopPlay(){ clearInterval(timer); timer=null; $('rPlay').textContent='▶'; }
 $('rPlay').onclick = () => {
   if(timer){ stopPlay(); return; }
+  if(!lyrOn.rad) return;
   $('rPlay').textContent='⏸';
   timer = setInterval(()=>show((fi+1)%frames.length), 600);
 };
