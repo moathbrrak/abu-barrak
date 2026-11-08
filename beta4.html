@@ -81,15 +81,17 @@
   .badge{position:absolute;top:-3px;left:2px;min-width:14px;height:14px;border-radius:7px;background:var(--bad);color:#fff;font-size:9px;line-height:14px;padding:0 3px;display:none}
   .badge.show{display:block}
 
-  /* ======== أزرار الطبقات (يمين) والتحكم (يسار) ======== */
-  .vcol{position:fixed;z-index:15;top:calc(var(--top) + 8px);display:flex;flex-direction:column;gap:6px}
+  /* ======== أزرار الطبقات (يمين) والتحكم (يسار): عمود زجاجي واحد بأيقونات خطية ======== */
+  .vcol{position:fixed;z-index:15;top:calc(var(--top) + 10px);display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px;border-radius:22px}
   .vcol.r{right:10px} .vcol.l{left:10px}
-  .vbtn{width:44px;height:44px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;padding:0;font-size:15px;line-height:1;transition:background .2s,box-shadow .2s}
-  .vbtn span{font-size:9px;font-weight:600;color:var(--mut)}
-  .vbtn.on{background:var(--acc);border-color:var(--acc);box-shadow:0 0 12px var(--glow)}
-  .vbtn.on span{color:var(--acc-tx)}
-  .sbtn{width:38px;height:38px;border-radius:12px;font-size:15px;display:grid;place-items:center;cursor:pointer;padding:0}
-  .sbtn.on{background:var(--acc);color:var(--acc-tx)}
+  .vcol svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .vbtn{width:42px;height:46px;border:0;border-radius:16px;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;cursor:pointer;padding:0;color:var(--mut);transition:background .2s,color .2s,box-shadow .2s}
+  .vbtn span{font-size:9px;font-weight:600;line-height:1}
+  .vbtn.on{background:var(--acc);color:var(--acc-tx);box-shadow:0 0 12px var(--glow)}
+  .sbtn{width:36px;height:36px;border:0;border-radius:13px;background:none;display:grid;place-items:center;cursor:pointer;padding:0;color:var(--tx)}
+  .sbtn:hover,.vbtn:hover{background:rgba(255,255,255,.07)}
+  .vbtn.on:hover{background:var(--acc)}
+  .sep{display:block;width:20px;height:1px;background:var(--gb);margin:2px 0}
 
   /* ======== القائمة ⋯ ======== */
   .menu{display:none;position:fixed;z-index:50;top:calc(env(safe-area-inset-top) + 62px);left:10px;width:min(310px,calc(100vw - 20px));max-height:calc(100dvh - 140px);overflow:auto;border-radius:20px;padding:12px;background:var(--sheet)}
@@ -126,11 +128,11 @@
   .ph .pl{flex:1;min-width:0}
   .pcity{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;color:var(--mut)}
   .pcity svg{width:12px;height:12px;fill:var(--acc)}
-  .ptemp{font-size:46px;font-weight:200;line-height:1;letter-spacing:-1.5px;margin-top:0}
+  .ptemp{font-size:40px;font-weight:200;line-height:1;letter-spacing:-1.5px;margin-top:0}
   .ptemp sup{font-size:.45em;font-weight:300;vertical-align:top;position:relative;top:.15em;color:var(--acc)}
   .pverd{font-size:12.5px;color:var(--tx);opacity:.92;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pill2{flex:none;width:86px;text-align:center}
-  .illo{width:86px;height:68px;filter:drop-shadow(0 6px 18px var(--glow))}
+  .pill2{flex:none;width:70px;text-align:center}
+  .illo{width:70px;height:54px;filter:drop-shadow(0 6px 18px var(--glow))}
   .hl{font-size:11.5px;color:var(--mut);margin-top:-4px}
   .hl b{color:var(--tx);font-weight:600}
   .pchips{display:flex;gap:5px;margin-top:7px;overflow-x:auto;scrollbar-width:none}
@@ -149,7 +151,7 @@
   .days3 small{color:var(--mut);font-size:11px}
   .days3 em{font-style:normal;color:var(--rain);font-size:10.5px}
   /* شريط الوقت */
-  .tl{display:flex;align-items:center;gap:10px;margin-top:20px}
+  .tl{display:flex;align-items:center;gap:10px;margin-top:18px}
   .play{position:relative;flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--acc);color:var(--acc-tx);font-size:13px;cursor:pointer;box-shadow:0 0 18px var(--glow)}
   .play::before{content:'';position:absolute;inset:-5px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 62%,var(--acc) 100%);-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 86%);mask:radial-gradient(closest-side,transparent 84%,#000 86%);animation:sp 3s linear infinite;opacity:.8}
   .play.on::before{animation-duration:.9s;opacity:1}
@@ -269,6 +271,29 @@
   .place .pt{font-size:22px;font-weight:300}
   .place .x{border:0;background:none;color:var(--mut);font-size:16px;cursor:pointer;padding:4px 6px}
   .pane[hidden]{display:none}
+  /* لمسة على الخريطة: الأيقونات تصير شفافة */
+  .hdr,.tabs,.vcol{transition:opacity .3s ease}
+  body.clean .hdr,body.clean .tabs,body.clean .vcol{opacity:.15}
+  /* الساعات القادمة + التراكمي المتوقع */
+  .hrow div{position:relative;padding-bottom:12px}
+  .hrow u{position:absolute;left:8px;right:8px;bottom:4px;height:4px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;text-decoration:none}
+  .hrow u i{display:block;height:100%;width:var(--w);background:var(--rain);border-radius:2px;margin:0}
+  .hrow div.cur u{background:rgba(0,0,0,.15)}
+  .hrow em.mm{color:var(--rain);font-weight:600}
+  .hrow div.cur em.mm{color:var(--acc-tx)}
+  .tot{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+  .tot div{background:var(--card2);border-radius:14px;padding:8px;text-align:center}
+  .tot b{display:block;font-size:19px;font-weight:600;color:var(--rain)}
+  .tot span{font-size:10.5px;color:var(--mut)}
+  .tot em{display:block;font-style:normal;font-size:10px;color:var(--mut)}
+  .dacc{display:grid;grid-template-columns:54px 24px minmax(0,1fr) 46px;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--gb);font-size:13px}
+  .dacc>i{font-style:normal;font-size:19px;text-align:center}
+  .dacc .db{height:8px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden;direction:ltr}
+  .dacc .db i{display:block;height:100%;background:linear-gradient(90deg,var(--rain),var(--acc2));border-radius:4px}
+  .dacc .dm{font-size:10.5px;color:var(--mut);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dacc .dv{text-align:center;white-space:nowrap;line-height:1.1}
+  .dacc .dv b{color:var(--rain);font-size:15px}
+  .dacc .dv small{display:block;font-size:11px}
   /* لما تنفتح اللوحة كاملة: الملخص يصغر عشان يبان المحتوى */
   #sheet.full .pchips,#sheet.full .days3,#sheet.mini .pchips,#sheet.mini .days3,#sheet.mini .hl{display:none}
   #sheet.full .ptemp,#sheet.mini .ptemp{font-size:32px}
@@ -300,13 +325,14 @@
 <div class="menu glass" id="menu"></div>
 
 <!-- الطبقات (يمين) -->
-<div class="vcol r" id="lyr"></div>
+<div class="vcol r glass" id="lyr"></div>
 <!-- التحكم (يسار) -->
-<div class="vcol l">
-  <button class="sbtn glass" id="bLoc" title="موقعي">◎</button>
-  <button class="sbtn glass" id="bZin" title="تكبير">＋</button>
-  <button class="sbtn glass" id="bZout" title="تصغير">－</button>
-  <button class="sbtn glass" id="tShot" title="حفظ صورة الرصد">📷</button>
+<div class="vcol l glass">
+  <button class="sbtn" id="bLoc" title="موقعي"></button>
+  <button class="sbtn" id="bZin" title="تكبير"></button>
+  <button class="sbtn" id="bZout" title="تصغير"></button>
+  <i class="sep"></i>
+  <button class="sbtn" id="tShot" title="حفظ صورة الرصد"></button>
 </div>
 <div id="newObs" class="newobs"></div>
 <div id="hint" class="hint glass"></div>
@@ -450,6 +476,19 @@ function illo(code, isDay){
   if(fog) s += [84,92].map(y=>`<line x1="24" y1="${y}" x2="96" y2="${y}" stroke="#d9d4f2" stroke-width="4" stroke-linecap="round" opacity=".7"/>`).join('');
   return s + '</svg>';
 }
+const IC = {
+  rad:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6.5-6.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>',
+  sat:'<svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1-.6-8 5.5 5.5 0 0 1 10.6 1.5A3.3 3.3 0 0 1 17 15z"/><path d="M8 18l-1 2.5M12 18l-1 2.5M16 18l-1 2.5"/></svg>',
+  rdt:'<svg viewBox="0 0 24 24"><path d="M7 14a4 4 0 0 1-.6-8 5.5 5.5 0 0 1 10.6 1.5A3.3 3.3 0 0 1 17 14"/><path d="M12.5 11l-2.5 4.5h3.5L11 21"/></svg>',
+  li:'<svg viewBox="0 0 24 24"><path d="M13.5 2.5L5 13.5h6l-1.5 8 8.5-11h-6z"/></svg>',
+  loc:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>',
+  zin:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  zout:'<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>',
+  cam:'<svg viewBox="0 0 24 24"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></svg>',
+  ok:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  wait:'<svg viewBox="0 0 24 24" class="spin"><path d="M12 3a9 9 0 1 0 9 9"/></svg>',
+};
+$('bLoc').innerHTML=IC.loc; $('bZin').innerHTML=IC.zin; $('bZout').innerHTML=IC.zout; $('tShot').innerHTML=IC.cam;
 const PIN = '<svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
 
 // ================= التبويبات =================
@@ -694,12 +733,19 @@ function render(d, stale){
       <span class="${thP?'warn':''}">⚡ احتمال رعد <b>${thP}%</b></span>
       ${d.failed&&d.failed.length?`<span>⚠️ ما وصل <b>${d.failed.join('، ')}</b></span>`:''}
     </div>
-    <div class="days3">${[0,1,2].map(i=>{ const k=td+i; if(!bd.time||k>=bd.time.length) return '<div></div>';
-      return `<div class="${i===0?'on':''}"><b>${DAY3[i]}</b><i>${wmoIcon(bd.weather_code?.[k],1)}</i><em>🌧 ${bd.precipitation_probability_max?.[k]??'—'}%</em><span dir="ltr"><b>${rnd(bd.temperature_2m_max?.[k])}°</b> <small>${rnd(bd.temperature_2m_min?.[k])}°</small></span></div>`; }).join('')}</div>`;
+`;
   setPeek();
 
   // ---------- الآن (التفاصيل) ----------
-  const hours = (bh.time||[]).slice(hi, hi+13).map((t,k)=>({t, k, tp:bh.temperature_2m?.[hi+k], pp:bh.precipitation_probability?.[hi+k], ic:wmoIcon(bh.weather_code?.[hi+k], bh.is_day?.[hi+k])}));
+  const hours = (bh.time||[]).slice(hi, hi+24).map((t,k)=>({t, k, tp:bh.temperature_2m?.[hi+k], pp:bh.precipitation_probability?.[hi+k], mm:bh.precipitation?.[hi+k], ic:wmoIcon(bh.weather_code?.[hi+k], bh.is_day?.[hi+k])}));
+  const hMax = Math.max(1, ...hours.map(x=>x.mm||0));
+  // تراكمي متوقع من كل نموذج (من الحين لقدّام)
+  const msum = (m,nh) => m.P.slice(start, start+nh).reduce((a,v)=>a+(v||0),0);
+  const tots = [24,48,72].map(nh=>{ const v = res.map(m=>msum(m,nh)); return v.length ? {avg:v.reduce((a,b)=>a+b,0)/v.length, lo:Math.min(...v), hi:Math.max(...v)} : null; });
+  const dayRows = (bd.time||[]).slice(td).map((date,i)=>{ const k = td+i;
+    const mods = res.map(m=>{ let s=0, any=false; (h.time||[]).forEach((t,j)=>{ if(t.startsWith(date) && m.P[j]!=null){ s+=m.P[j]; any=true; } }); return any?[m.name,s]:null; }).filter(Boolean);
+    return {i, k, date, mm:bd.precipitation_sum?.[k], pp:bd.precipitation_probability_max?.[k], mods}; });
+  const dMax = Math.max(2, ...dayRows.flatMap(r=>[r.mm||0, ...r.mods.map(x=>x[1])]));
   const rainNow = bh.precipitation_probability?.[hi];
   const visib = bh.visibility?.[hi], uv = bh.uv_index?.[hi] ?? bd.uv_index_max?.[td];
   const sunset = bd.sunset?.[td], sunrise = bd.sunrise?.[td];
@@ -709,6 +755,21 @@ function render(d, stale){
   const accC = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim() || '#ff7a59';
 
   $('app').innerHTML = `
+  <section class="card">
+    <div class="ctitle">🕐 الساعات القادمة (24 ساعة)</div>
+    <div class="hrow">${hours.map(x=>`<div class="${x.k===0?'cur':''}"><span>${x.k===0?'الحين':fmtHour(x.t)}</span><i>${x.ic}</i><b>${x.tp!=null?Math.round(x.tp)+'°':'—'}</b>${x.mm>=0.1?`<em class="mm">${r1(x.mm)} مم</em>`:`<em>${x.pp!=null&&x.pp>0?x.pp+'%':''}</em>`}<u><i style="--w:${Math.min(100,(x.mm||0)/hMax*100)}%"></i></u></div>`).join('')}</div>
+    <div class="ts" style="margin-top:6px">المجموع المتوقع خلال 24 ساعة: <b>${r1(hours.reduce((a,x)=>a+(x.mm||0),0))} مم</b> · الشريط الأزرق = كمية المطر بالساعة</div>
+  </section>
+
+  <section class="card">
+    <div class="ctitle">🌧️ التراكمي المتوقع للأيام الجاية</div>
+    <div class="tot">${['24 ساعة','48 ساعة','3 أيام'].map((n,i)=>`<div><b>${tots[i]?r1(tots[i].avg):'—'}</b><span>مم خلال ${n}</span>${tots[i]&&res.length>1?`<em>النماذج ${r1(tots[i].lo)}–${r1(tots[i].hi)}</em>`:''}</div>`).join('')}</div>
+    ${dayRows.map(r=>`<div class="dacc"><b>${r.i<3?DAY3[r.i]:dayName(r.date)}</b><i>${wmoIcon(bd.weather_code?.[r.k],1)}</i>
+      <div><div class="db"><i style="width:${Math.min(100,(r.mm||0)/dMax*100)}%"></i></div><div class="dm">🌧 ${r.pp??'—'}% · <span dir="ltr">${rnd(bd.temperature_2m_max?.[r.k])}°/${rnd(bd.temperature_2m_min?.[r.k])}°</span></div>${r.mods.length?`<div class="dm">${r.mods.map(([n,v])=>`${n} ${r1(v)}`).join(' · ')}</div>`:''}</div>
+      <div class="dv"><b>${r1(r.mm)}</b><small>مم</small></div></div>`).join('')}
+    <div class="ts" style="margin-top:6px">الرقم الكبير من النموذج المدمج، وتحت كل يوم توقع كل نموذج بالمليمتر</div>
+  </section>
+
   <section class="card story">
     <p>${story}</p>
     <div class="trio">
@@ -731,10 +792,6 @@ function render(d, stale){
     </div>
   </section>
 
-  <section class="card">
-    <div class="ctitle">🕐 الساعات الجاية</div>
-    <div class="hrow">${hours.map(x=>`<div class="${x.k===0?'cur':''}"><span>${x.k===0?'الحين':fmtHour(x.t)}</span><i>${x.ic}</i><b>${x.tp!=null?Math.round(x.tp)+'°':'—'}</b><em>${x.pp!=null&&x.pp>0?x.pp+'%':''}</em></div>`).join('')}</div>
-  </section>
 
   <section class="card">
     <div class="ctitle">🌧️ المطر التراكمي</div>
@@ -1013,7 +1070,7 @@ const wmsTime = {};
 let rvHost = null;
 
 function renderLyr(){
-  $('lyr').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button class="vbtn glass ${lyrOn[k]?'on':''}" data-k="${k}">${v.ic}<span>${v.name}</span></button>`).join('');
+  $('lyr').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button class="vbtn ${lyrOn[k]?'on':''}" data-k="${k}" title="${v.name}">${IC[k]}<span>${v.name}</span></button>`).join('');
   renderMenu();
 }
 function toggleLyr(k){ lyrOn[k] = !lyrOn[k]; ls.set('lyrOn', lyrOn); renderLyr(); if(map) applyLyr(); }
@@ -1169,6 +1226,7 @@ const styleReady = () => new Promise(r => {
   const t0 = Date.now(), iv = setInterval(()=>{ if(ok() || Date.now()-t0 > 4000){ clearInterval(iv); r(); } }, 100);
 });
 async function refreshInner(first){
+  if(mapReady) await mapReady;   // ما نبدأ قبل ما تجهز الخريطة
   await styleReady();
   $('live').textContent='يشيك…';
   let newRad=0, newSat=0;
@@ -1221,11 +1279,18 @@ function createMap(c){
   }));
   map.on('zoomend', updateLabels);
   // لمسة = تحريك فقط · ضغط مطوّل (أو زر الفأرة اليمين) = التراكمي · في وضع الملاحظة: لمسة = ملاحظة
-  map.on('click', e => { if(noteMode) startNote(e.lngLat); });
-  map.on('contextmenu', e => accumPopup(e.lngLat));
-  let lp = null, lp0 = null;
+  // لمسة عادية على الخريطة = الأيقونات تصير شفافة (لمسة ثانية ترجعها)
+  map.on('click', e => {
+    if(noteMode){ startNote(e.lngLat); return; }
+    if(lpFired){ lpFired = false; return; }
+    const t = e.originalEvent && e.originalEvent.target;
+    if(t && t.closest && t.closest('.maplibregl-marker,.maplibregl-popup')) return;
+    document.body.classList.toggle('clean');
+  });
+  map.on('contextmenu', e => { lpFired = true; accumPopup(e.lngLat); setTimeout(()=>lpFired=false, 400); });
+  let lp = null, lp0 = null; var lpFired = false;
   const cancelLP = () => { clearTimeout(lp); lp = null; };
-  map.on('touchstart', e => { cancelLP(); if(e.points && e.points.length===1){ lp0 = e.point; lp = setTimeout(()=>{ lp=null; accumPopup(e.lngLat); }, 600); } });
+  map.on('touchstart', e => { cancelLP(); if(e.points && e.points.length===1){ lp0 = e.point; lp = setTimeout(()=>{ lp=null; lpFired=true; accumPopup(e.lngLat); }, 600); } });
   map.on('touchmove', e => { if(lp && lp0 && Math.hypot(e.point.x-lp0.x, e.point.y-lp0.y) > 10) cancelLP(); });
   ['touchend','touchcancel','zoomstart'].forEach(ev => map.on(ev, cancelLP));
 }
@@ -1256,14 +1321,14 @@ $('bZout').onclick = () => map && map.zoomOut({duration:250});
 let meMark = null;
 $('bLoc').onclick = () => {
   if(!navigator.geolocation || !map) return;
-  $('bLoc').innerHTML = '<span class="spin">⟳</span>';
+  $('bLoc').innerHTML = IC.wait;
   navigator.geolocation.getCurrentPosition(p=>{
-    $('bLoc').textContent = '◎';
+    $('bLoc').innerHTML = IC.loc;
     const ll = [p.coords.longitude, p.coords.latitude];
     if(!meMark){ const el=document.createElement('div'); el.className='me'; meMark = new maplibregl.Marker({element:el}); }
     meMark.setLngLat(ll).addTo(map);
     map.flyTo({center:ll, zoom:Math.max(map.getZoom(),9), padding:mapPad(), duration:800});
-  }, ()=>{ $('bLoc').textContent = '◎'; hint('⚠️ اسمح للمتصفح بالموقع'); setTimeout(()=>hint(''),3000); }, {enableHighAccuracy:true, timeout:10000});
+  }, ()=>{ $('bLoc').innerHTML = IC.loc; hint('⚠️ اسمح للمتصفح بالموقع'); setTimeout(()=>hint(''),3000); }, {enableHighAccuracy:true, timeout:10000});
 };
 
 // ---------- التراكمي بالضغط المطوّل ----------
@@ -1315,7 +1380,7 @@ document.addEventListener('click', e=>{ if(e.target.closest('.maplibregl-popup')
 
 // ---------- حفظ صورة الرصد (باسم أقرب رادار) ----------
 $('tShot').onclick = async () => {
-  const btn = $('tShot'); if(!map) return; btn.textContent = '⏳';
+  const btn = $('tShot'); if(!map) return; btn.innerHTML = IC.wait;
   try{
     await new Promise(r => map.loaded() ? r() : map.once('idle', r));
     const mc = map.getCanvas(), W = mc.clientWidth, H = mc.clientHeight, HEAD = 44, S = mc.width / W;
@@ -1342,9 +1407,9 @@ $('tShot').onclick = async () => {
     const file = new File([blob], fname, {type:'image/png'});
     if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:fname}); }
     else { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href), 5000); }
-    btn.textContent = '✅';
-  }catch(e){ btn.textContent = e.name==='AbortError' ? '📷' : '⚠️'; }
-  setTimeout(()=>btn.textContent='📷', 2500);
+    btn.innerHTML = IC.ok;
+  }catch(e){ btn.innerHTML = e.name==='AbortError' ? IC.cam : '⚠️'; }
+  setTimeout(()=>btn.innerHTML=IC.cam, 2500);
 };
 
 // ---------- اللوحة السفلية: 3 وضعيات (مصغّرة / متوسطة / كاملة) تسحبها بإصبعك ----------
@@ -1427,6 +1492,8 @@ function renderPills(){
   });
   updateLabels();
 }
+
+document.querySelectorAll('.hdr,.tabs,.vcol').forEach(el=>el.addEventListener('pointerdown', ()=>document.body.classList.remove('clean'), true));
 
 // تسجيل الـService Worker: يخلّي التطبيق يفتح بدون نت ويوصله التحديث على طول
 if('serviceWorker' in navigator && location.protocol==='https:'){
