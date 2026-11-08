@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>مسار – مخطط الرحلات</title>
-<meta name="theme-color" content="#140f24">
+<title>مسار</title>
+<meta name="theme-color" content="#0A5C40">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,214 +12,282 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;600;700&display=swap" rel="stylesheet">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
+  @font-face{font-family:"Reem Kufi";src:url(fonts/reemkufi.woff) format("woff");font-weight:400 700;font-display:swap}
+  @font-face{font-family:"Readex Pro";src:url(fonts/readex.woff) format("woff");font-weight:160 700;font-display:swap}
   :root{
-    --bg:#140f24; --glass:rgba(30,21,52,.9); --sheet:rgba(22,15,40,.98); --gb:rgba(255,255,255,.11);
-    --card:rgba(255,255,255,.05); --card2:rgba(255,255,255,.09);
-    --tx:#f4f0ff; --mut:#a59cc4; --acc:#ff7a59; --acc2:#a66bff; --ok:#58d68d; --bad:#ff5c7a; --route:#ff7a59;
+    /* ألوان لوحات الطرق */
+    --sign:#0A5C40; --sign-d:#06422E; --sign-l:#13704F;
+    --amber:#F4B400; --ink:#1C2225; --paper:#FFFFFF; --field:#EDF1EE; --rule:#D6DED9;
+    --on-sign:rgba(255,255,255,.74); --on-paper:#5C6A64; --bad:#C2372C; --me:#1F6FEB;
+    --kufi:"Reem Kufi","Readex Pro",sans-serif; --body:"Readex Pro",-apple-system,"SF Arabic",Tahoma,sans-serif;
     --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom);
+    --ease:cubic-bezier(.22,1,.36,1);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{height:100%;overflow:hidden;background:var(--bg)}
-  body{font-family:"IBM Plex Sans Arabic",-apple-system,"SF Arabic",Tahoma,sans-serif;color:var(--tx);-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
-  button{font-family:inherit;color:inherit;border:0;background:none;cursor:pointer}
-  input,textarea{font-family:inherit;font-size:16px;color:var(--tx);-webkit-user-select:text;user-select:text}
+  html,body{height:100%;overflow:hidden;background:#20302a}
+  body{font-family:var(--body);font-size:15px;color:#fff;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;transition:transform .15s var(--ease),background-color .2s}
+  button:active{transform:scale(.96)}
+  button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2.5px solid var(--amber);outline-offset:2px}
+  input,textarea{font:inherit;font-size:16px;-webkit-user-select:text;user-select:text}
+  svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
   #map{position:fixed;inset:0}
-  .maplibregl-ctrl-attrib{font-size:9px;background:rgba(0,0,0,.35)!important;color:#ccc}
-  .maplibregl-ctrl-attrib a{color:#ccc}
+  .maplibregl-ctrl-attrib{font-size:9px;background:rgba(0,0,0,.4)!important;color:#ddd}
+  .maplibregl-ctrl-attrib a{color:#ddd}
   .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{display:none}
 
-  /* الشريط العلوي */
-  #top{position:fixed;top:calc(var(--st) + 10px);right:10px;left:10px;display:flex;gap:8px;z-index:5}
-  .pill{background:var(--glass);border:1px solid var(--gb);border-radius:16px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 6px 20px rgba(0,0,0,.35)}
-  #tripBtn{flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:9px 14px;text-align:right}
-  #tripBtn b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #tripBtn small{display:block;color:var(--mut);font-size:12px}
-  #tripBtn .ar{margin-inline-start:auto;color:var(--mut)}
-  .ib{width:48px;height:48px;display:grid;place-items:center;font-size:20px}
-  #side{position:fixed;left:10px;top:calc(var(--st) + 70px);display:flex;flex-direction:column;gap:8px;z-index:5}
+  /* لوحة اسم الرحلة: مثل لوحة الطريق بإطارها الأبيض الداخلي */
+  .plate{background:var(--sign);border-radius:12px;box-shadow:inset 0 0 0 4px var(--sign),inset 0 0 0 6px #fff,0 8px 22px rgba(0,0,0,.35)}
+  #tripBtn{position:fixed;top:calc(var(--st) + 12px);right:12px;left:72px;z-index:5;display:flex;align-items:center;gap:10px;padding:12px 18px 13px;text-align:right}
+  #tripBtn b{font:600 21px/1.25 var(--kufi);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+  #tripBtn svg{width:18px;height:18px;color:var(--on-sign)}
+
+  #side{position:fixed;left:12px;top:calc(var(--st) + 12px);display:flex;flex-direction:column;gap:10px;z-index:5}
+  .rb{width:48px;height:48px;border-radius:50%;background:var(--paper);color:var(--ink);display:grid;place-items:center;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+  .rb.on{background:var(--amber)}
 
   /* اللوحة السفلية */
-  #sheet{position:fixed;left:0;right:0;bottom:0;height:86vh;z-index:6;background:var(--sheet);border-radius:22px 22px 0 0;border-top:1px solid var(--gb);box-shadow:0 -10px 30px rgba(0,0,0,.45);display:flex;flex-direction:column;transform:translateY(calc(86vh - 300px));transition:transform .28s cubic-bezier(.2,.8,.2,1);will-change:transform}
+  #sheet{position:fixed;left:0;right:0;bottom:0;height:88vh;z-index:6;background:var(--sign);border-radius:22px 22px 0 0;box-shadow:0 -12px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;transform:translateY(60vh);transition:transform .42s var(--ease);will-change:transform}
+  #sheet:before{content:"";position:absolute;inset:7px 7px -10px;border:2px solid rgba(255,255,255,.9);border-radius:16px 16px 0 0;pointer-events:none}
   #sheet.drag{transition:none}
-  #grab{padding:8px 16px 4px;touch-action:none}
-  #grab:before{content:"";display:block;width:42px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);margin:0 auto 10px}
-  #sum{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-  #sum b{font-size:20px}
-  #sum span{color:var(--mut);font-size:14px}
-  #acts{display:flex;gap:8px;padding:10px 16px 6px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x}
+  #grab{padding:12px 24px 2px;touch-action:none;position:relative}
+  #grab:before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.4);margin:0 auto 12px}
+  #sum{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  #sumA{font:700 34px/1 var(--kufi);letter-spacing:-.5px}
+  #sumA small{font-size:18px;font-weight:500;margin-inline-start:4px}
+  #sumB{color:var(--on-sign);font-size:14px;line-height:1.5;text-align:left}
+  #sumB b{display:block;color:#fff;font-weight:500;font-size:15px}
+  #acts{display:flex;gap:8px;margin:0 9px;padding:14px 15px 12px;overflow-x:auto;scrollbar-width:none;touch-action:pan-x}
   #acts::-webkit-scrollbar{display:none}
-  .chip{flex:none;display:flex;align-items:center;gap:6px;padding:9px 14px;border-radius:14px;background:var(--card2);border:1px solid var(--gb);font-size:14px;white-space:nowrap}
-  .chip.main{background:var(--acc);border-color:transparent;color:#fff;font-weight:600}
-  #list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 12px calc(var(--sb) + 24px)}
-  .stop{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:16px;background:var(--card);border:1px solid var(--gb)}
-  .stop.sel{border-color:var(--acc);background:rgba(255,122,89,.08)}
-  .num{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;background:var(--acc2);color:#fff}
-  .stop.first .num{background:var(--ok);color:#0b2414}
-  .stop.last .num{background:var(--acc)}
+  .act{flex:none;display:flex;align-items:center;gap:7px;height:42px;padding:0 15px;border-radius:10px;border:1.5px solid rgba(255,255,255,.55);font-size:14.5px;white-space:nowrap}
+  .act svg{width:18px;height:18px}
+  .act.main{background:var(--amber);border-color:var(--amber);color:var(--ink);font-weight:600}
+  .act.on{background:#fff;color:var(--sign);border-color:#fff}
+  #list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 24px calc(var(--sb) + 30px);overscroll-behavior:contain}
+
+  /* كل وقفة مثل سطر في لوحة المسافات */
+  .stop{display:flex;align-items:flex-start;gap:14px;padding:15px 0;border-top:1px solid rgba(255,255,255,.22);position:relative}
+  .stop:first-child{border-top:0}
+  .badge{flex:none;min-width:30px;height:30px;padding:0 6px;border-radius:7px;background:var(--amber);color:var(--ink);display:grid;place-items:center;font:700 15px/1 var(--kufi);margin-top:2px}
+  .stop.first .badge{background:#fff;color:var(--sign)}
+  .stop.sel .badge{box-shadow:0 0 0 3px var(--sign),0 0 0 5px var(--amber)}
   .sb{flex:1;min-width:0}
-  .sb b{display:block;font-size:15px;line-height:1.4}
-  .sb p{color:var(--mut);font-size:13px;line-height:1.5;margin-top:3px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .sb .tm{display:inline-block;margin-top:5px;font-size:12px;color:var(--acc);background:rgba(255,122,89,.12);padding:1px 8px;border-radius:8px}
-  .mv{display:flex;flex-direction:column;gap:2px}
-  .mv button{width:30px;height:26px;border-radius:8px;background:var(--card2);font-size:12px;color:var(--mut)}
+  .sb b{display:block;font:600 19px/1.35 var(--kufi)}
+  .sb p{color:var(--on-sign);font-size:14px;line-height:1.65;margin-top:4px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .sb .tm{display:inline-flex;align-items:center;gap:5px;margin-top:7px;font-size:13px;color:var(--amber)}
+  .sb .tm svg{width:14px;height:14px}
+  .dist{flex:none;text-align:left;min-width:62px}
+  .dist b{display:block;font:700 22px/1.1 var(--kufi)}
+  .dist b small{font-size:13px;font-weight:500;margin-inline-start:2px}
+  .dist span{display:block;color:var(--on-sign);font-size:12.5px;margin-top:3px}
+  .dist.start span{color:#fff;font-size:13px;margin-top:6px}
+  .mv{display:none;flex-direction:column;gap:6px;flex:none}
+  .sorting .mv{display:flex}
+  .sorting .dist{display:none}
+  .mv button{width:38px;height:32px;border-radius:8px;background:rgba(255,255,255,.14);display:grid;place-items:center}
+  .mv button svg{width:18px;height:18px}
   .mv button:disabled{opacity:.25}
-  .leg{display:flex;align-items:center;gap:8px;padding:6px 26px;color:var(--mut);font-size:12.5px}
-  .leg:before{content:"";width:2px;height:22px;background:repeating-linear-gradient(var(--route) 0 4px,transparent 4px 8px);margin-inline-end:6px}
-  .empty{text-align:center;color:var(--mut);padding:30px 20px;line-height:1.9;font-size:14px}
-  .empty b{display:block;color:var(--tx);font-size:17px;margin-bottom:6px}
+  .back{color:var(--on-sign)}
+  .back .badge{background:transparent;border:1.5px dashed rgba(255,255,255,.6);color:#fff}
+  .empty{padding:18px 0 10px;color:var(--on-sign);line-height:1.9;font-size:15px}
+  .empty b{display:block;color:#fff;font:600 22px/1.4 var(--kufi);margin-bottom:6px}
 
-  /* علامات الخريطة */
-  .pw{width:32px;height:32px;cursor:pointer}
-  .pin{width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--acc2);border:2.5px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.5);display:grid;place-items:center}
-  .pin span{transform:rotate(45deg);color:#fff;font:700 13px "IBM Plex Sans Arabic",sans-serif}
-  .pin.first{background:var(--ok)} .pin.first span{color:#0b2414}
-  .pin.last{background:var(--acc)}
-  .pin.sel{transform:rotate(-45deg) scale(1.25)}
-  .me{width:18px;height:18px;border-radius:50%;background:#3b8cff;border:3px solid #fff;box-shadow:0 0 0 8px rgba(59,140,255,.25)}
-  .maplibregl-popup-content{direction:rtl;text-align:right;font-family:inherit;background:var(--sheet);color:var(--tx);border:1px solid var(--gb);border-radius:14px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-  .maplibregl-popup-tip{border-top-color:var(--sheet)!important;border-bottom-color:var(--sheet)!important}
+  /* دبابيس الخريطة: رقم مثل لوحة المخرج */
+  .pw{width:34px;height:42px;cursor:pointer}
+  .pin{position:relative;width:34px;height:34px;border-radius:9px;background:var(--amber);color:var(--ink);border:2.5px solid #fff;display:grid;place-items:center;font:700 15px/1 var(--kufi);box-shadow:0 4px 12px rgba(0,0,0,.45);transition:transform .25s var(--ease);transform-origin:50% 130%}
+  .pin:after{content:"";position:absolute;left:50%;bottom:-9px;width:10px;height:10px;background:inherit;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:translateX(-50%) rotate(45deg);border-radius:0 0 3px 0}
+  .pin.first{background:var(--sign);color:#fff}
+  .pin.last{background:var(--ink);color:var(--amber)}
+  .pin.sel{transform:scale(1.22)}
+  .pin.drop{animation:drop .5s var(--ease)}
+  @keyframes drop{0%{transform:translateY(-36px) scale(.7);opacity:0}60%{opacity:1}}
+  .me{width:20px;height:20px;border-radius:50%;background:var(--me);border:3px solid #fff;box-shadow:0 0 0 7px rgba(31,111,235,.25),0 2px 6px rgba(0,0,0,.4)}
+  .maplibregl-popup-content{direction:rtl;text-align:right;font-family:var(--body);background:var(--paper);color:var(--ink);border-radius:14px;padding:14px;box-shadow:0 10px 26px rgba(0,0,0,.4)}
+  .maplibregl-popup-tip{border-top-color:var(--paper)!important;border-bottom-color:var(--paper)!important}
   .maplibregl-popup-close-button{display:none}
-  .pop b{display:block;font-size:14px;margin-bottom:8px;max-width:220px}
-  .pop .chip{width:100%;justify-content:center}
+  .pop span{display:block;font-size:13px;color:var(--on-paper);margin-bottom:10px;direction:ltr;text-align:right}
 
-  /* النوافذ */
-  .ov{position:fixed;inset:0;z-index:20;background:rgba(5,3,12,.55);display:none;align-items:flex-end}
-  .ov.on{display:flex}
-  .dlg{width:100%;max-height:92vh;overflow-y:auto;background:#170f2b;border-radius:22px 22px 0 0;border-top:1px solid var(--gb);padding:16px 16px calc(var(--sb) + 18px);animation:up .22s ease-out}
-  @keyframes up{from{transform:translateY(40px)}}
-  .dlg h3{font-size:18px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-  .dlg h3 .x{margin-inline-start:auto;width:34px;height:34px;border-radius:50%;background:var(--card2);font-size:16px}
-  .fld{display:block;margin-bottom:12px}
-  .fld span{display:block;font-size:13px;color:var(--mut);margin-bottom:5px}
-  .fld input,.fld textarea{width:100%;background:var(--card);border:1px solid var(--gb);border-radius:12px;padding:11px 12px;outline:none}
-  .fld input:focus,.fld textarea:focus{border-color:var(--acc2)}
-  .fld textarea{min-height:130px;resize:vertical;line-height:1.6}
-  .row{display:flex;gap:8px;flex-wrap:wrap}
-  .row .chip{flex:1;justify-content:center}
-  .chip.bad{color:var(--bad)}
-  .tabs{display:flex;gap:6px;background:var(--card);padding:4px;border-radius:12px;margin-bottom:12px}
-  .tabs button{flex:1;padding:8px;border-radius:9px;font-size:14px;color:var(--mut)}
-  .tabs button.on{background:var(--card2);color:var(--tx);font-weight:600}
-  .res{display:flex;flex-direction:column;gap:6px;margin-top:8px}
-  .res button{text-align:right;padding:10px 12px;border-radius:12px;background:var(--card);border:1px solid var(--gb);font-size:14px;line-height:1.5}
-  .res button small{display:block;color:var(--mut);font-size:12px}
-  .hint{color:var(--mut);font-size:12.5px;line-height:1.7;margin:4px 0 10px}
-  .trip{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:var(--card);border:1px solid var(--gb);margin-bottom:8px;text-align:right;width:100%}
-  .trip.on{border-color:var(--acc)}
-  .trip b{flex:1;font-size:15px}
-  .trip small{color:var(--mut)}
-  .bases{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .bases button{padding:14px;border-radius:14px;background:var(--card);border:1px solid var(--gb);font-size:15px}
-  .bases button.on{border-color:var(--acc);background:rgba(255,122,89,.1)}
-  #toast{position:fixed;left:50%;top:calc(var(--st) + 74px);transform:translate(-50%,-20px);opacity:0;z-index:30;background:var(--glass);border:1px solid var(--gb);padding:9px 16px;border-radius:14px;font-size:14px;pointer-events:none;transition:.25s;max-width:90vw;text-align:center}
+  /* النوافذ: ورقة بيضاء */
+  .ov{position:fixed;inset:0;z-index:20;background:rgba(10,20,16,0);display:flex;align-items:flex-end;pointer-events:none;transition:background-color .3s}
+  .ov.on{background:rgba(10,20,16,.5);pointer-events:auto}
+  .dlg{width:100%;max-height:92vh;overflow-y:auto;background:var(--paper);color:var(--ink);border-radius:22px 22px 0 0;padding:22px 22px calc(var(--sb) + 22px);transform:translateY(105%);transition:transform .4s var(--ease)}
+  .ov.on .dlg{transform:none}
+  .dlg h3{font:600 24px/1.3 var(--kufi);margin-bottom:18px;display:flex;align-items:center;gap:10px;color:var(--sign)}
+  .dlg h3 .badge{font-size:16px}
+  .x{margin-inline-start:auto;width:38px;height:38px;border-radius:50%;background:var(--field);color:var(--ink);display:grid;place-items:center}
+  .x svg{width:18px;height:18px}
+  .fld{display:block;margin-bottom:14px}
+  .fld span{display:block;font-size:13.5px;color:var(--on-paper);margin-bottom:6px}
+  .fld input,.fld textarea{width:100%;background:var(--field);border:2px solid transparent;border-radius:12px;padding:12px 14px;color:var(--ink);outline:none;transition:border-color .2s,background-color .2s}
+  .fld input:focus,.fld textarea:focus{border-color:var(--sign);background:#fff}
+  .fld textarea{min-height:140px;resize:vertical;line-height:1.75}
+  .row{display:flex;gap:8px}
+  .btn{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;height:48px;padding:0 12px;border-radius:12px;background:var(--field);color:var(--ink);font-size:15px;white-space:nowrap}
+  .btn svg{width:19px;height:19px}
+  .btn.main{background:var(--sign);color:#fff;font-weight:600}
+  .btn.bad{background:none;color:var(--bad);border:1.5px solid #EBC9C5}
+  .btn:disabled{opacity:.35}
+  .seg{display:flex;gap:4px;background:var(--field);padding:4px;border-radius:12px;margin-bottom:16px}
+  .seg button{flex:1;height:38px;border-radius:9px;font-size:14px;color:var(--on-paper)}
+  .seg button.on{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+  .res{display:flex;flex-direction:column;margin:2px 0 8px}
+  .res button{display:flex;gap:12px;align-items:center;text-align:right;padding:12px 2px;border-bottom:1px solid var(--rule);font-size:15.5px;line-height:1.45}
+  .res button svg{color:var(--sign)}
+  .res button small{display:block;color:var(--on-paper);font-size:12.5px}
+  .hint{color:var(--on-paper);font-size:13.5px;line-height:1.8;margin:6px 0 14px}
+  .coord{direction:ltr;text-align:right;font-size:13px;color:var(--on-paper);margin:-4px 0 16px}
+  .trip{display:flex;align-items:center;gap:12px;width:100%;padding:14px 2px;border-bottom:1px solid var(--rule);text-align:right}
+  .trip b{flex:1;font:600 18px/1.3 var(--kufi)}
+  .trip small{color:var(--on-paper);font-size:13px}
+  .trip i{width:10px;height:10px;border-radius:50%;border:2px solid var(--rule)}
+  .trip.on i{background:var(--sign);border-color:var(--sign)}
+  .bases{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .bases button{height:84px;border-radius:14px;background-size:cover;background-position:center;position:relative;overflow:hidden;color:#fff;font-weight:600;display:flex;align-items:flex-end;padding:10px 12px;border:3px solid transparent}
+  .bases button:before{content:"";position:absolute;inset:0;background:linear-gradient(transparent 30%,rgba(0,0,0,.65))}
+  .bases button span{position:relative}
+  .bases button.on{border-color:var(--amber)}
+  .stack{display:flex;flex-direction:column;gap:8px}
+  .stack .btn{justify-content:flex-start;padding:0 16px}
+  .stack .btn small{margin-inline-start:auto;color:var(--on-paper);font-size:12.5px}
+
+  #toast{position:fixed;left:50%;top:calc(var(--st) + 84px);transform:translate(-50%,-12px);opacity:0;z-index:30;background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:14.5px;pointer-events:none;transition:opacity .25s,transform .35s var(--ease);max-width:88vw;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,.3)}
   #toast.on{opacity:1;transform:translate(-50%,0)}
-  #busy{position:fixed;top:calc(var(--st) + 66px);right:50%;transform:translateX(50%);z-index:7;font-size:12px;color:var(--mut);display:none}
+  #busy{position:fixed;top:calc(var(--st) + 84px);left:50%;transform:translateX(-50%);z-index:7;font-size:13px;background:var(--paper);color:var(--ink);padding:6px 14px;border-radius:20px;display:none;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+  @media (prefers-reduced-motion:reduce){*,*:before,*:after{transition-duration:0s!important;animation:none!important}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12 3 2 8.5l10 5.5 10-5.5z"/><path d="m2 15.5 10 5.5 10-5.5"/></symbol>
+  <symbol id="i-loc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="19" r="2.5"/><circle cx="18" cy="5" r="2.5"/><path d="M8.5 19H15a3.5 3.5 0 0 0 0-7H9a3.5 3.5 0 0 1 0-7h6.5"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="m7 4-3 3 3 3M4 7h11M17 20l3-3-3-3M20 17H9"/></symbol>
+  <symbol id="i-nav" viewBox="0 0 24 24"><path d="M3 11 21 3l-8 18-2-8z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="19" cy="12" r="1.3" fill="currentColor"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M9 5l3-3 3 3M9 19l3 3 3-3M5 9l-3 3 3 3M19 9l3 3-3 3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 3v18M4 18l3 3 3-3M17 21V3M14 6l3-3 3 3"/></symbol>
+  <symbol id="i-loop" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-open" viewBox="0 0 24 24"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+</svg>
 <div id="map"></div>
 
-<div id="top">
-  <button id="tripBtn" class="pill"><div style="min-width:0"><b id="tripName">رحلتي</b><small>الرحلات</small></div><span class="ar">▾</span></button>
-</div>
+<button id="tripBtn" class="plate"><b id="tripName">رحلتي</b><svg><use href="#i-chev"/></svg></button>
 <div id="side">
-  <button class="pill ib" id="baseBtn" title="الخريطة">🗺️</button>
-  <button class="pill ib" id="locBtn" title="موقعي">📍</button>
-  <button class="pill ib" id="fitBtn" title="عرض المسار كامل">⤢</button>
+  <button class="rb" id="baseBtn" aria-label="نوع الخريطة"><svg><use href="#i-layers"/></svg></button>
+  <button class="rb" id="locBtn" aria-label="موقعي"><svg><use href="#i-loc"/></svg></button>
+  <button class="rb" id="fitBtn" aria-label="عرض المسار كامل"><svg><use href="#i-fit"/></svg></button>
 </div>
-<div id="busy" class="pill" style="padding:4px 10px">جاري حساب الطريق…</div>
+<div id="busy">أحسب الطريق…</div>
 
 <div id="sheet">
-  <div id="grab"><div id="sum"><b id="sumA">لا توجد وقفات</b><span id="sumB"></span></div></div>
+  <div id="grab"><div id="sum"><div id="sumA">مسار</div><div id="sumB"></div></div></div>
   <div id="acts">
-    <button class="chip main" id="addBtn">＋ إضافة موقع</button>
-    <button class="chip" id="optBtn">🔀 أقصر ترتيب</button>
-    <button class="chip" id="navBtn">🚗 ابدأ الملاحة</button>
-    <button class="chip" id="shareBtn">📤 مشاركة</button>
-    <button class="chip" id="moreBtn">⋯</button>
+    <button class="act main" id="addBtn"><svg><use href="#i-plus"/></svg>أضف وقفة</button>
+    <button class="act" id="navBtn"><svg><use href="#i-nav"/></svg>انطلق</button>
+    <button class="act" id="sortBtn"><svg><use href="#i-sort"/></svg>رتّب</button>
+    <button class="act" id="optBtn"><svg><use href="#i-route"/></svg>أقصر طريق</button>
+    <button class="act" id="shareBtn"><svg><use href="#i-share"/></svg>شارك</button>
+    <button class="act" id="moreBtn" aria-label="المزيد"><svg><use href="#i-more"/></svg></button>
   </div>
   <div id="list"></div>
 </div>
 
-<!-- إضافة موقع -->
+<!-- إضافة وقفة -->
 <div class="ov" id="addOv"><div class="dlg">
-  <h3>إضافة موقع <button class="x" data-close>✕</button></h3>
-  <div class="tabs" id="addTabs">
+  <h3>أضف وقفة <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
+  <div class="seg" id="addTabs">
     <button data-t="search" class="on">بحث</button>
-    <button data-t="paste">رابط / إحداثيات</button>
+    <button data-t="paste">رابط أو إحداثيات</button>
     <button data-t="bulk">عدة مواقع</button>
   </div>
   <div data-p="search">
-    <label class="fld"><input id="q" type="search" placeholder="اسم مكان، مدينة، معلم…" enterkeyhint="search" autocomplete="off"></label>
+    <label class="fld"><input id="q" type="search" placeholder="اسم مكان أو مدينة" enterkeyhint="search" autocomplete="off"></label>
     <div class="res" id="qres"></div>
-    <p class="hint">أو اضغط مطوّلاً على أي نقطة في الخريطة لإضافتها.</p>
-    <div class="row"><button class="chip" id="addMe">📍 أضف موقعي الحالي</button><button class="chip" id="addCenter">⊕ وسط الخريطة</button></div>
+    <p class="hint">أو اضغط مطوّلاً على أي مكان في الخريطة.</p>
+    <div class="row"><button class="btn" id="addMe"><svg><use href="#i-loc"/></svg>موقعي الحالي</button><button class="btn" id="addCenter"><svg><use href="#i-pin"/></svg>وسط الخريطة</button></div>
   </div>
   <div data-p="paste" hidden>
-    <label class="fld"><span>الصق رابط قوقل ماب أو إحداثيات (مثل 21.4858, 39.1925)</span><input id="pasteIn" autocomplete="off"></label>
+    <label class="fld"><span>رابط قوقل ماب أو إحداثيات مثل 21.4858, 39.1925</span><input id="pasteIn" autocomplete="off" dir="ltr"></label>
     <label class="fld"><span>الاسم (اختياري)</span><input id="pasteName" autocomplete="off"></label>
-    <button class="chip main" id="pasteGo" style="width:100%;justify-content:center">أضف</button>
-    <p class="hint">الروابط المختصرة (maps.app.goo.gl) ما تحتوي إحداثيات: افتحها في قوقل ماب، اضغط على الدبوس وانسخ الإحداثيات اللي تطلع.</p>
+    <button class="btn main" id="pasteGo" style="width:100%">أضف الوقفة</button>
+    <p class="hint">الروابط المختصرة (maps.app.goo.gl) ما فيها إحداثيات. افتحها في قوقل ماب، اضغط على الدبوس، وانسخ الأرقام اللي تطلع.</p>
   </div>
   <div data-p="bulk" hidden>
-    <label class="fld"><span>كل موقع في سطر: اسم، أو إحداثيات، أو رابط. تقدر تكتب الاسم قبل الإحداثيات.</span><textarea id="bulkIn" placeholder="مثال:&#10;الطائف&#10;الهدا 21.3667, 40.2833&#10;https://www.google.com/maps/@21.42,39.82,15z"></textarea></label>
-    <button class="chip main" id="bulkGo" style="width:100%;justify-content:center">أضف الكل بالترتيب</button>
+    <label class="fld"><span>كل موقع في سطر: اسم، أو إحداثيات، أو رابط. تقدر تكتب الاسم قبل الإحداثيات.</span><textarea id="bulkIn" placeholder="الطائف&#10;الهدا 21.3667, 40.2833"></textarea></label>
+    <button class="btn main" id="bulkGo" style="width:100%">أضف الكل بالترتيب</button>
     <p class="hint" id="bulkMsg"></p>
   </div>
 </div></div>
 
 <!-- تعديل وقفة -->
 <div class="ov" id="stopOv"><div class="dlg">
-  <h3><span class="num" id="eNum">1</span> الوقفة <button class="x" data-close>✕</button></h3>
+  <h3><span class="badge" id="eNum">1</span><span id="eTitle">الوقفة</span><button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
   <label class="fld"><span>الاسم</span><input id="eName" autocomplete="off"></label>
-  <label class="fld"><span>ملاحظاتي</span><textarea id="eNote" placeholder="وش تبي تسوي هنا، وش تجيب معك، أوقات، أرقام…"></textarea></label>
-  <label class="fld"><span>الموعد (اختياري)</span><input id="eTime" placeholder="مثلاً: الجمعة العصر، أو 4:30" autocomplete="off"></label>
-  <p class="hint" id="eCoord"></p>
+  <label class="fld"><span>ملاحظاتي</span><textarea id="eNote" placeholder="وش بتسوي هنا، وش تجيب معك، أرقام تحتاجها…"></textarea></label>
+  <label class="fld"><span>الموعد</span><input id="eTime" placeholder="الجمعة العصر" autocomplete="off"></label>
+  <p class="coord" id="eCoord"></p>
   <div class="row" style="margin-bottom:8px">
-    <button class="chip" id="eUp">▲ قبل</button>
-    <button class="chip" id="eDown">▼ بعد</button>
-    <button class="chip" id="eGo">🚗 روح لها</button>
+    <button class="btn" id="eUp"><svg><use href="#i-up"/></svg>قدّمها</button>
+    <button class="btn" id="eDown"><svg><use href="#i-down"/></svg>أخّرها</button>
   </div>
-  <div class="row">
-    <button class="chip" id="eMove">✥ عدّل المكان</button>
-    <button class="chip bad" id="eDel">🗑 احذف</button>
+  <div class="row" style="margin-bottom:8px">
+    <button class="btn main" id="eGo"><svg><use href="#i-nav"/></svg>روح لها</button>
+    <button class="btn" id="eMove"><svg><use href="#i-move"/></svg>حرّك الدبوس</button>
   </div>
+  <button class="btn bad" id="eDel" style="width:100%"><svg><use href="#i-trash"/></svg>احذف الوقفة</button>
 </div></div>
 
 <!-- الرحلات -->
 <div class="ov" id="tripsOv"><div class="dlg">
-  <h3>رحلاتي <button class="x" data-close>✕</button></h3>
-  <div id="tripsList"></div>
-  <div class="row" style="margin-top:6px"><button class="chip main" id="newTrip">＋ رحلة جديدة</button><button class="chip" id="renTrip">✎ تغيير الاسم</button></div>
-  <div class="row" style="margin-top:8px"><button class="chip" id="dupTrip">⧉ نسخة</button><button class="chip bad" id="delTrip">🗑 حذف الرحلة</button></div>
+  <h3>رحلاتي <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
+  <div id="tripsList" style="margin:-8px 0 16px"></div>
+  <div class="row" style="margin-bottom:8px"><button class="btn main" id="newTrip"><svg><use href="#i-plus"/></svg>رحلة جديدة</button><button class="btn" id="renTrip"><svg><use href="#i-edit"/></svg>غيّر الاسم</button></div>
+  <div class="row"><button class="btn" id="dupTrip"><svg><use href="#i-copy"/></svg>انسخها</button><button class="btn bad" id="delTrip"><svg><use href="#i-trash"/></svg>احذفها</button></div>
 </div></div>
 
 <!-- المزيد -->
 <div class="ov" id="moreOv"><div class="dlg">
-  <h3>المزيد <button class="x" data-close>✕</button></h3>
-  <div class="row" style="margin-bottom:8px"><button class="chip" id="revBtn">⇅ اعكس الترتيب</button><button class="chip" id="loopBtn">↩︎ رجوع للبداية</button></div>
-  <div class="row" style="margin-bottom:8px"><button class="chip" id="expBtn">⬇︎ حفظ ملف نسخة</button><button class="chip" id="impBtn">⬆︎ فتح ملف</button></div>
-  <p class="hint">«رجوع للبداية» يحسب طريق العودة لأول وقفة. ملف النسخة يحفظ كل رحلاتك، تقدر ترجعها على أي جهاز.</p>
+  <h3>المزيد <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
+  <div class="stack">
+    <button class="btn" id="loopBtn"><svg><use href="#i-loop"/></svg>رجوع للبداية<small id="loopState"></small></button>
+    <button class="btn" id="revBtn"><svg><use href="#i-swap"/></svg>اعكس الترتيب</button>
+    <button class="btn" id="expBtn"><svg><use href="#i-save"/></svg>حفظ نسخة من رحلاتي<small>ملف</small></button>
+    <button class="btn" id="impBtn"><svg><use href="#i-open"/></svg>استرجاع من ملف</button>
+  </div>
+  <p class="hint">«رجوع للبداية» يضيف طريق العودة لأول وقفة. ملف النسخة فيه كل رحلاتك وتقدر تفتحه على أي جهاز.</p>
   <input type="file" id="impFile" accept=".json,application/json" hidden>
 </div></div>
 
 <!-- نوع الخريطة -->
 <div class="ov" id="baseOv"><div class="dlg">
-  <h3>نوع الخريطة <button class="x" data-close>✕</button></h3>
+  <h3>الخريطة <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
   <div class="bases" id="bases"></div>
 </div></div>
 
 <!-- الملاحة -->
 <div class="ov" id="navOv"><div class="dlg">
-  <h3>الملاحة <button class="x" data-close>✕</button></h3>
-  <p class="hint">التطبيق يرسم المسار، وللتوجيه الصوتي أثناء السواقة يفتح المسار في تطبيق الخرائط اللي تختاره.</p>
-  <div class="row" style="margin-bottom:8px"><button class="chip main" id="navAll">🚗 المسار كامل من موقعي</button></div>
-  <div class="row"><button class="chip" id="navNext">التالي: <span id="navNextName"></span></button></div>
+  <h3>انطلق <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
+  <p class="hint" style="margin-top:-8px">للتوجيه الصوتي وأنت تسوق، يفتح المسار في قوقل ماب.</p>
+  <div class="stack">
+    <button class="btn main" id="navAll"><svg><use href="#i-route"/></svg>المسار كامل من موقعي</button>
+    <button class="btn" id="navNext"><svg><use href="#i-nav"/></svg><span id="navNextName"></span></button>
+  </div>
   <p class="hint" id="navNote"></p>
 </div></div>
 
@@ -248,23 +316,27 @@ function toast(m, ms=2200){ const el=$('#toast'); el.textContent=m; el.classList
 // ================= الخريطة =================
 const EOX = 'https://tiles.maps.eox.at/wmts/1.0.0/';
 const eox = (l, ext='jpg') => `${EOX}${l}/default/g/{z}/{y}/{x}.${ext}`;
+const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
+const LBL = {u:eox('overlay_base_bright_3857','png'), max:16};
 const BASES = {
-  sat:    {name:'🛰️ قمر صناعي', layers:[{u:eox('s2cloudless-2024_3857'), max:15, paint:{'raster-contrast':.15}}, {u:eox('overlay_base_bright_3857','png'), max:16}], attr:'Sentinel-2 cloudless © EOX, © OSM'},
-  osm:    {name:'🗺️ شوارع', layers:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max:19}], attr:'© OpenStreetMap'},
-  terrain:{name:'⛰️ تضاريس', layers:[{u:eox('terrain_3857'), max:16}], attr:'Terrain © EOX, © OSM'},
-  dark:   {name:'🌑 داكنة', layers:[{u:eox('terrain-light_3857'), max:16, paint:{'raster-saturation':-1,'raster-brightness-max':.46,'raster-contrast':.6}}], attr:'© EOX, © OSM'},
+  sat:    {name:'قمر صناعي', layers:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', max:19}, LBL], attr:'Imagery © Esri, Maxar · © OSM, EOX', thumb:ESRI+'World_Imagery/MapServer/tile/7/56/77'},
+  sat2:   {name:'قمر صناعي (بديل)', layers:[{u:eox('s2cloudless-2024_3857'), max:15, paint:{'raster-contrast':.15}}, LBL], attr:'Sentinel-2 cloudless © EOX, © OSM', thumb:EOX+'s2cloudless-2024_3857/default/g/7/56/77.jpg'},
+  osm:    {name:'شوارع', layers:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max:19}], attr:'© OpenStreetMap', thumb:'https://tile.openstreetmap.org/7/77/56.png'},
+  terrain:{name:'تضاريس', layers:[{u:eox('terrain_3857'), max:16}], attr:'Terrain © EOX, © OSM', thumb:EOX+'terrain_3857/default/g/7/56/77.jpg'},
 };
-let baseKey = ls.get('base', 'osm');
+let baseKey = ls.get('base2', 'sat');
 const startView = ls.get('view', {c:[39.19,21.54], z:9});
 const map = new maplibregl.Map({
   container:'map', center:startView.c, zoom:startView.z,
-  style:{version:8, sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':'#1b1530'}}]},
+  style:{version:8, sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':'#1f2a25'}}]},
   attributionControl:{compact:true}, dragRotate:false, pitchWithRotate:false, maxZoom:19
 });
 map.touchZoomRotate.disableRotation();
-let baseIds = [];
+let baseIds = [], tileErr = 0;
+// لو صور Esri ما توصل من شبكتك، نحوّل تلقائياً للبديل
+map.on('error', e=>{ if(baseKey==='sat' && e.sourceId==='base0' && ++tileErr===6){ setBase('sat2'); toast('حوّلت لصور القمر البديلة'); } });
 function setBase(k){
-  if(!BASES[k]) k='osm';
+  if(!BASES[k]) k='sat'; tileErr = 0;
   baseIds.forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); if(map.getSource(id)) map.removeSource(id); });
   baseIds = [];
   const b = BASES[k];
@@ -274,35 +346,36 @@ function setBase(k){
     map.addLayer({id, type:'raster', source:id, paint:{'raster-fade-duration':100, ...(x.paint||{})}}, map.getLayer('route-case') ? 'route-case' : undefined);
     baseIds.push(id);
   });
-  baseKey = k; ls.set('base', k);
+  baseKey = k; ls.set('base2', k);
 }
 
 // طبقة المسار
 function initRoute(){
   map.addSource('route', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
-  map.addLayer({id:'route-case', type:'line', source:'route', layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#2a0f08','line-width':9,'line-opacity':.55}});
-  map.addLayer({id:'route-line', type:'line', source:'route', filter:['!',['get','straight']], layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#ff7a59','line-width':5}});
-  map.addLayer({id:'route-straight', type:'line', source:'route', filter:['get','straight'], paint:{'line-color':'#ffb547','line-width':4,'line-dasharray':[2,2]}});
+  map.addLayer({id:'route-case', type:'line', source:'route', layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#1C2225','line-width':['interpolate',['linear'],['zoom'],5,6,14,11],'line-opacity':.85}});
+  map.addLayer({id:'route-line', type:'line', source:'route', filter:['!',['get','straight']], layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#F4B400','line-width':['interpolate',['linear'],['zoom'],5,2.5,14,4.5]}});
+  map.addLayer({id:'route-straight', type:'line', source:'route', filter:['get','straight'], paint:{'line-color':'#ffffff','line-width':3,'line-dasharray':[2,2]}});
 }
 
 map.on('load', ()=>{ setBase(baseKey); initRoute(); render(); fitAll(false); });
 map.on('moveend', ()=>{ const c=map.getCenter(); ls.set('view', {c:[+c.lng.toFixed(5), +c.lat.toFixed(5)], z:+map.getZoom().toFixed(2)}); });
 
 // ================= العلامات =================
-let markers = [], selId = null, moveMode = null;
+let markers = [], selId = null, moveMode = null, justAdded = null;
 function drawMarkers(){
   markers.forEach(m=>m.remove()); markers = [];
   const st = T().stops;
   st.forEach((s,i)=>{
     const el = document.createElement('div');
     el.className = 'pw';
-    el.innerHTML = `<div class="pin${i===0?' first':''}${i===st.length-1&&i>0?' last':''}${s.id===selId?' sel':''}"><span>${i+1}</span></div>`;
+    el.innerHTML = `<div class="pin${i===0?' first':''}${i===st.length-1&&i>0?' last':''}${s.id===selId?' sel':''}${s.id===justAdded?' drop':''}">${i+1}</div>`;
     el.addEventListener('click', e=>{ e.stopPropagation(); openStop(s.id); });
-    const m = new maplibregl.Marker({element:el, anchor:'center', offset:[0,-23], draggable: moveMode===s.id})
+    const m = new maplibregl.Marker({element:el, anchor:'bottom', draggable: moveMode===s.id})
       .setLngLat([s.lng, s.lat]).addTo(map);
     m.on('dragend', ()=>{ const p=m.getLngLat(); s.lat=+p.lat.toFixed(6); s.lng=+p.lng.toFixed(6); moveMode=null; save(); render(); toast('تم تعديل المكان'); });
     markers.push(m);
   });
+  justAdded = null;
 }
 
 // ================= الطريق (OSRM) =================
@@ -353,39 +426,43 @@ function fmtT(s){ if(s==null) return ''; const m=Math.round(s/60); if(m<60) retu
 
 // ================= القائمة =================
 function render(){ drawMarkers(); renderList(); scheduleRoute(); $('#tripName').textContent = T().name; }
+function plural(n){ return n===1?'وقفة':n===2?'وقفتين':n<=10?'وقفات':'وقفة'; }
 function renderList(){
   const t = T(), st = t.stops, L = $('#list');
+  L.classList.toggle('sorting', sorting);
   const ready = routeData && routeData.legs.length === Math.max(0, routePoints().length-1);
   if(!st.length){
-    $('#sumA').textContent = 'لا توجد وقفات'; $('#sumB').textContent='';
-    L.innerHTML = `<div class="empty"><b>ابدأ رحلتك</b>اضغط «إضافة موقع» أو اضغط مطوّلاً على الخريطة.<br>كل موقع تضيفه ينضاف لنهاية المسار، وتقدر تكتب ملاحظاتك عليه.</div>`;
+    $('#sumA').textContent = 'مسار'; $('#sumB').innerHTML='';
+    L.innerHTML = `<div class="empty"><b>وين أول وقفة؟</b>ابحث عن مكان أو اضغط مطوّلاً على الخريطة. كل وقفة تنضاف لآخر الطريق، وتقدر تكتب ملاحظاتك عليها.</div>`;
     return;
   }
-  $('#sumA').textContent = st.length + (st.length===1?' وقفة':st.length===2?' وقفتين':st.length<=10?' وقفات':' وقفة');
   if(ready && st.length>1){
     const d = routeData.legs.reduce((a,l)=>a+l.d,0), tt = routeData.straight ? null : routeData.legs.reduce((a,l)=>a+l.t,0);
-    $('#sumB').textContent = fmtKm(d) + (tt!=null?' · '+fmtT(tt)+' سواقة':' (خط مستقيم)') + (t.loop?' · مع العودة':'');
-  } else $('#sumB').textContent = st.length>1 ? '…' : '';
+    const k = kmParts(d);
+    $('#sumA').innerHTML = `${k[0]}<small>${k[1]}</small>`;
+    $('#sumB').innerHTML = `<b>${tt!=null?fmtT(tt)+' سواقة':'خط مستقيم'}</b>${st.length} ${plural(st.length)}${t.loop?'، مع الرجعة':''}`;
+  } else { $('#sumA').innerHTML = st.length>1 ? '…' : `${st.length}<small>${plural(st.length)}</small>`; $('#sumB').innerHTML=''; }
   let h = '';
+  const leg = i => ready ? routeData.legs[i] : null;
+  const distHtml = l => l ? (()=>{ const k=kmParts(l.d); return `<b>${k[0]}<small>${k[1]}</small></b>${l.t!=null?`<span>${fmtT(l.t)}</span>`:''}`; })() : '<b>…</b>';
   st.forEach((s,i)=>{
-    const cls = (i===0?' first':'') + (i===st.length-1&&i>0?' last':'') + (s.id===selId?' sel':'');
+    const cls = (i===0?' first':'') + (s.id===selId?' sel':'');
     h += `<div class="stop${cls}" data-id="${s.id}">
-      <div class="num">${i+1}</div>
-      <div class="sb"><b>${esc(s.name||'بدون اسم')}</b>${s.note?`<p>${esc(s.note)}</p>`:''}${s.time?`<span class="tm">🕒 ${esc(s.time)}</span>`:''}</div>
-      <div class="mv"><button data-up="${i}" ${i===0?'disabled':''}>▲</button><button data-dn="${i}" ${i===st.length-1?'disabled':''}>▼</button></div>
+      <div class="badge">${i+1}</div>
+      <div class="sb"><b>${esc(s.name||'بدون اسم')}</b>${s.note?`<p>${esc(s.note)}</p>`:''}${s.time?`<span class="tm"><svg><use href="#i-clock"/></svg>${esc(s.time)}</span>`:''}</div>
+      <div class="dist${i===0?' start':''}">${i===0 ? '<span>البداية</span>' : distHtml(leg(i-1))}</div>
+      <div class="mv"><button data-up="${i}" ${i===0?'disabled':''} aria-label="قدّم"><svg><use href="#i-up"/></svg></button><button data-dn="${i}" ${i===st.length-1?'disabled':''} aria-label="أخّر"><svg><use href="#i-down"/></svg></button></div>
     </div>`;
-    if(i < st.length-1 || (t.loop && st.length>1)){
-      const l = ready ? routeData.legs[i] : null;
-      h += `<div class="leg">${l ? fmtKm(l.d) + (l.t!=null?' · '+fmtT(l.t):'') : '…'}${i===st.length-1?' ↩︎ رجوع للبداية':''}</div>`;
-    }
   });
+  if(t.loop && st.length>1) h += `<div class="stop back"><div class="badge">1</div><div class="sb"><b>رجوع إلى ${esc(st[0].name||'البداية')}</b></div><div class="dist">${distHtml(leg(st.length-1))}</div></div>`;
   L.innerHTML = h;
 }
+function kmParts(m){ if(m<1000) return [Math.round(m),'م']; return [m<100000 ? (m/1000).toFixed(1).replace(/\.0$/,'') : Math.round(m/1000), 'كم']; }
 $('#list').addEventListener('click', e=>{
   const up = e.target.closest('[data-up]'), dn = e.target.closest('[data-dn]');
   if(up){ moveStop(+up.dataset.up, -1); return; }
   if(dn){ moveStop(+dn.dataset.dn, +1); return; }
-  const s = e.target.closest('.stop'); if(!s) return;
+  const s = e.target.closest('.stop[data-id]'); if(!s || sorting) return;
   const st = T().stops.find(x=>x.id===s.dataset.id);
   selId = st.id; drawMarkers(); renderList();
   map.easeTo({center:[st.lng, st.lat], zoom:Math.max(map.getZoom(), 13), padding:{bottom:sheetVisible()}});
@@ -396,7 +473,7 @@ function moveStop(i, d){ const st=T().stops, j=i+d; if(j<0||j>=st.length) return
 // ================= إضافة =================
 function addStop(lat, lng, name, note=''){
   const s = {id:uid(), lat:+(+lat).toFixed(6), lng:+(+lng).toFixed(6), name:name||'', note, time:''};
-  T().stops.push(s); save(); render();
+  T().stops.push(s); justAdded = s.id; save(); render();
   if(!name) reverseName(s);
   return s;
 }
@@ -439,19 +516,19 @@ $('#q').addEventListener('input', e=>{ clearTimeout(qT); const v=e.target.value.
 $('#q').addEventListener('keydown', e=>{ if(e.key==='Enter'){ clearTimeout(qT); doSearch(e.target.value.trim()); e.target.blur(); } });
 async function doSearch(v){
   const p = parseLoc(v);
-  if(p){ $('#qres').innerHTML = `<button data-lat="${p.lat}" data-lng="${p.lng}" data-n="">📍 ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}<small>إحداثيات</small></button>`; return; }
-  $('#qres').innerHTML = '<p class="hint">جاري البحث…</p>';
+  if(p){ $('#qres').innerHTML = `<button data-lat="${p.lat}" data-lng="${p.lng}" data-n=""><svg><use href="#i-pin"/></svg><div>${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}<small>إحداثيات</small></div></button>`; return; }
+  $('#qres').innerHTML = '<p class="hint">أدوّر…</p>';
   try{
     const res = await search(v);
     $('#qres').innerHTML = res.length ? res.map(x=>{ const parts=(x.display_name||'').split(/[،,]\s*/); const n = x.name || parts[0];
-      return `<button data-lat="${x.lat}" data-lng="${x.lon}" data-n="${esc(n)}">${esc(n)}<small>${esc(parts.slice(1,4).join('، '))}</small></button>`; }).join('')
+      return `<button data-lat="${x.lat}" data-lng="${x.lon}" data-n="${esc(n)}"><svg><use href="#i-pin"/></svg><div>${esc(n)}<small>${esc(parts.slice(1,4).join('، '))}</small></div></button>`; }).join('')
       : '<p class="hint">ما لقيت شي. جرّب اسم ثاني أو الصق الإحداثيات.</p>';
   }catch(e){ $('#qres').innerHTML = '<p class="hint">البحث يحتاج إنترنت.</p>'; }
 }
 $('#qres').addEventListener('click', e=>{
   const b = e.target.closest('button[data-lat]'); if(!b) return;
   const s = addStop(b.dataset.lat, b.dataset.lng, b.dataset.n);
-  closeOv(); flyTo(s); toast('انضافت: '+(s.name||'موقع'));
+  closeOv(); flyTo(s); toast('انضافت '+(s.name||'الوقفة'));
   $('#q').value=''; $('#qres').innerHTML='';
 });
 $('#pasteGo').onclick = ()=>{
@@ -492,8 +569,8 @@ let lpT, lpStart, pop;
 function showAddPop(ll){
   if(pop) pop.remove();
   const d = document.createElement('div'); d.className='pop';
-  d.innerHTML = `<b>${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}</b><button class="chip main">＋ أضف للمسار</button>`;
-  d.querySelector('button').onclick = ()=>{ addStop(ll.lat, ll.lng, ''); pop.remove(); toast('انضافت للمسار'); };
+  d.innerHTML = `<span>${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}</span><button class="btn main" style="width:100%"><svg><use href="#i-plus"/></svg>أضف للمسار</button>`;
+  d.querySelector('button').onclick = ()=>{ addStop(ll.lat, ll.lng, ''); pop.remove(); toast('انضافت الوقفة'); };
   pop = new maplibregl.Popup({closeButton:false, offset:12}).setLngLat(ll).setDOMContent(d).addTo(map);
   if(navigator.vibrate) navigator.vibrate(15);
 }
@@ -509,7 +586,7 @@ let editId = null;
 function openStop(id){
   const st = T().stops, i = st.findIndex(s=>s.id===id); if(i<0) return;
   const s = st[i]; editId = id; selId = id; drawMarkers(); renderList();
-  $('#eNum').textContent = i+1; $('#eName').value = s.name||''; $('#eNote').value = s.note||''; $('#eTime').value = s.time||'';
+  $('#eNum').textContent = i+1; $('#eTitle').textContent = i===0 ? 'البداية' : (i===st.length-1 ? 'آخر وقفة' : 'الوقفة '+(i+1)); $('#eName').value = s.name||''; $('#eNote').value = s.note||''; $('#eTime').value = s.time||'';
   $('#eCoord').textContent = `${s.lat}, ${s.lng}`;
   $('#eUp').disabled = i===0; $('#eDown').disabled = i===st.length-1;
   openOv('stopOv');
@@ -525,7 +602,7 @@ $('#eGo').onclick = ()=>{ const s=eS(); openNav([[s.lat,s.lng]]); };
 
 // ================= الرحلات =================
 function renderTrips(){
-  $('#tripsList').innerHTML = trips.map(t=>`<button class="trip${t.id===curId?' on':''}" data-id="${t.id}"><b>${esc(t.name)}</b><small>${t.stops.length} وقفة</small></button>`).join('');
+  $('#tripsList').innerHTML = trips.map(t=>`<button class="trip${t.id===curId?' on':''}" data-id="${t.id}"><i></i><b>${esc(t.name)}</b><small>${t.stops.length} ${plural(t.stops.length)}</small></button>`).join('');
 }
 $('#tripBtn').onclick = ()=>{ renderTrips(); openOv('tripsOv'); };
 $('#tripsList').addEventListener('click', e=>{ const b=e.target.closest('.trip'); if(!b) return; switchTrip(b.dataset.id); closeOv(); });
@@ -535,6 +612,8 @@ $('#renTrip').onclick = ()=>{ const n = prompt('اسم الرحلة:', T().name)
 $('#dupTrip').onclick = ()=>{ const t=JSON.parse(JSON.stringify(T())); t.id=uid(); t.name+=' (نسخة)'; t.stops.forEach(s=>s.id=uid()); trips.push(t); switchTrip(t.id); renderTrips(); toast('تم النسخ'); };
 $('#delTrip').onclick = ()=>{ if(!confirm('تحذف رحلة «'+T().name+'» بكل وقفاتها؟')) return; trips = trips.filter(t=>t.id!==curId); if(!trips.length) trips=[{id:uid(), name:'رحلتي', stops:[], loop:false}]; switchTrip(trips[0].id); renderTrips(); };
 
+let sorting = false;
+$('#sortBtn').onclick = ()=>{ sorting = !sorting; $('#sortBtn').classList.toggle('on', sorting); if(sorting && snapI<2) setSnap(2); renderList(); };
 // ================= أقصر ترتيب =================
 $('#optBtn').onclick = async ()=>{
   const st = T().stops; if(st.length<3){ toast('يحتاج ٣ وقفات أو أكثر'); return; }
@@ -558,7 +637,7 @@ let navTarget = null;
 $('#navBtn').onclick = ()=>{
   const st = T().stops; if(!st.length){ toast('أضف مواقع أول'); return; }
   const nx = st.find(s=>s.id===selId) || st[0];
-  navTarget = nx; $('#navNextName').textContent = (st.indexOf(nx)+1)+'. '+(nx.name||'موقع');
+  navTarget = nx; $('#navNextName').textContent = 'إلى '+(nx.name||'الوقفة '+(st.indexOf(nx)+1))+' فقط';
   $('#navNote').textContent = st.length>10 ? 'قوقل ماب يقبل ١٠ وقفات بالمسار الواحد، فبيفتح أول ١٠ وقفات.' : '';
   openOv('navOv');
 };
@@ -609,13 +688,13 @@ $('#impFile').onchange = async e=>{
   e.target.value='';
 };
 $('#revBtn').onclick = ()=>{ T().stops.reverse(); save(); render(); closeOv(); };
-function loopLabel(){ $('#loopBtn').textContent = T().loop ? '✓ رجوع للبداية' : '↩︎ رجوع للبداية'; }
+function loopLabel(){ $('#loopState').textContent = T().loop ? 'مفعّل' : 'مطفّى'; }
 $('#loopBtn').onclick = ()=>{ T().loop = !T().loop; save(); render(); loopLabel(); };
 $('#moreBtn').onclick = ()=>{ loopLabel(); openOv('moreOv'); };
 
 // ================= نوع الخريطة =================
 $('#baseBtn').onclick = ()=>{
-  $('#bases').innerHTML = Object.entries(BASES).map(([k,b])=>`<button data-k="${k}" class="${k===baseKey?'on':''}">${b.name}</button>`).join('');
+  $('#bases').innerHTML = Object.entries(BASES).map(([k,b])=>`<button data-k="${k}" class="${k===baseKey?'on':''}" style="background-image:url('${b.thumb}')"><span>${b.name}</span></button>`).join('');
   openOv('baseOv');
 };
 $('#bases').addEventListener('click', e=>{ const b=e.target.closest('button'); if(!b) return; setBase(b.dataset.k); closeOv(); });
@@ -624,7 +703,7 @@ $('#bases').addEventListener('click', e=>{ const b=e.target.closest('button'); i
 let meMarker = null;
 function locate(cb){
   if(!navigator.geolocation){ toast('الجهاز ما يدعم تحديد الموقع'); return; }
-  toast('جاري تحديد موقعك…');
+  toast('أحدد موقعك…');
   navigator.geolocation.getCurrentPosition(p=>{
     const ll = {lat:p.coords.latitude, lng:p.coords.longitude};
     if(!meMarker){ const el=document.createElement('div'); el.className='me'; meMarker = new maplibregl.Marker({element:el}).setLngLat(ll).addTo(map); }
@@ -650,8 +729,8 @@ $('#addBtn').onclick = ()=>{ openOv('addOv'); };
 
 // ================= سحب اللوحة =================
 const sheet = $('#sheet');
-const H = () => window.innerHeight*0.86;
-const SNAP = () => [H()-118, H()-Math.min(320, window.innerHeight*0.42), 0]; // صغيرة / وسط / كاملة
+const H = () => window.innerHeight*0.88;
+const SNAP = () => [H()-150, H()-Math.min(360, window.innerHeight*0.45), 0]; // صغيرة / وسط / كاملة
 let snapI = ls.get('snap', 1);
 function setSnap(i, anim=true){ snapI=i; sheet.classList.toggle('drag', !anim); sheet.style.transform = `translateY(${SNAP()[i]}px)`; ls.set('snap', i); }
 function sheetVisible(){ return Math.round(H() - SNAP()[snapI]); }
