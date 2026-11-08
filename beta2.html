@@ -685,7 +685,12 @@ async function refreshNow(first){
   try{ await refreshInner(first); }catch(e){ console.warn('refresh', e); $('live').textContent='⚠️ يعيد المحاولة بعد دقيقة'; }
   finally{ refreshing = false; }
 }
-const styleReady = () => map.isStyleLoaded() ? Promise.resolve() : new Promise(r => { const f=()=>{ if(map.isStyleLoaded()){ map.off('styledata',f); map.off('idle',f); r(); } }; map.on('styledata',f); map.on('idle',f); });
+// نتأكد إن تعريف الخريطة جاهز بس (مو كل البلاطات)، ومع مهلة عشان ما يعلق أبداً
+const styleReady = () => new Promise(r => {
+  const ok = () => map.style && map.style._loaded;
+  if(ok()) return r();
+  const t0 = Date.now(), iv = setInterval(()=>{ if(ok() || Date.now()-t0 > 4000){ clearInterval(iv); r(); } }, 100);
+});
 async function refreshInner(first){
   await styleReady();
   $('live').textContent='⟳ يشيك…';

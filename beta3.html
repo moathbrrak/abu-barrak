@@ -134,7 +134,7 @@
   .lyrbar::-webkit-scrollbar{display:none}
   .lyrbar button{flex:none;white-space:nowrap;background:rgba(20,20,24,.62);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:7px 12px;font:inherit;font-size:12px;color:#c8c8cf;cursor:pointer}
   .lyrbar button.on{background:rgba(90,169,255,.3);border-color:rgba(90,169,255,.8);color:#fff}
-  .fabs{position:fixed;z-index:60;left:12px;bottom:calc(env(safe-area-inset-bottom) + 250px);display:flex;flex-direction:column;gap:8px}
+  .fabs{position:fixed;z-index:60;left:12px;top:calc(env(safe-area-inset-top) + 112px);display:flex;flex-direction:column;gap:8px}
   .fab{width:46px;height:46px;border-radius:50%;font-size:19px;color:var(--tx);cursor:pointer;display:grid;place-items:center;padding:0}
   .fab.on{background:rgba(255,181,71,.35);border-color:var(--warn)}
   .mbottom{position:fixed;z-index:60;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom) + 10px);border-radius:24px;padding:14px;max-width:540px;margin:0 auto}
@@ -161,8 +161,8 @@
   .ages .old{color:var(--warn)}
   .attr{font-size:9px;color:#6b6b73;margin-top:6px;direction:ltr;text-align:left}
   .newobs{display:none;position:fixed;z-index:70;top:calc(env(safe-area-inset-top) + 112px);left:50%;transform:translateX(-50%);background:#c0263d;color:#fff;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 2px 10px #0008}
-  .hint{display:none;position:fixed;z-index:70;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top) + 112px);padding:8px 14px;border-radius:14px;font-size:13px;white-space:nowrap}
-  .noteform{display:none;position:fixed;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom) + 250px);z-index:80;border-radius:18px;padding:12px}
+  .hint{display:none;position:fixed;z-index:70;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top) + 112px);margin-left:20px;padding:8px 14px;border-radius:14px;font-size:13px;white-space:nowrap}
+  .noteform{display:none;position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 112px);z-index:80;border-radius:18px;padding:12px}
   .noteform.show{display:block}
   .noteform textarea{width:100%;margin:6px 0;background:rgba(255,255,255,.06);color:var(--tx);border:1px solid var(--line);border-radius:12px;padding:8px;font:inherit;font-size:16px}
   .row{display:flex;gap:8px}
@@ -211,7 +211,7 @@
 <div class="mapui">
   <div class="mtop">
     <button class="rb glass" id="backBtn" title="رجوع">→</button>
-    <div class="t"><b>توقعات الطقس</b><span id="mCity"></span></div>
+    <div class="t"><b>توقعات الطقس</b><span id="mCity"></span><span style="display:block;font-size:10px;opacity:.7">اضغط مطوّل على أي مكان يعطيك التراكمي</span></div>
     <button class="rb glass" id="tKsa" title="المملكة كاملة">🇸🇦</button>
   </div>
   <div class="lyrbar" id="lyr"></div>
@@ -237,7 +237,7 @@
     <div class="mstory" id="storyMap"></div>
     <div class="legend"><span>خفيف</span><div class="g"></div><span>غزير / برد</span></div>
     <div class="tlrow"><div class="ages" id="ages"></div><span class="live" id="live">● مباشر</span></div>
-    <div class="sub" id="rNote" style="font-size:10px;margin-top:6px"></div>
+    <div class="sub" id="rNote" style="display:none"></div>
     <div class="attr">© Esri · © OpenStreetMap · RainViewer · EUMETSAT</div>
   </div>
 </div>
@@ -776,7 +776,12 @@ async function refreshNow(first){
   try{ await refreshInner(first); }catch(e){ console.warn('refresh', e); $('live').textContent='⚠️ يعيد المحاولة بعد دقيقة'; }
   finally{ refreshing = false; }
 }
-const styleReady = () => map.isStyleLoaded() ? Promise.resolve() : new Promise(r => { const f=()=>{ if(map.isStyleLoaded()){ map.off('styledata',f); map.off('idle',f); r(); } }; map.on('styledata',f); map.on('idle',f); });
+// نتأكد إن تعريف الخريطة جاهز بس (مو كل البلاطات)، ومع مهلة عشان ما يعلق أبداً
+const styleReady = () => new Promise(r => {
+  const ok = () => map.style && map.style._loaded;
+  if(ok()) return r();
+  const t0 = Date.now(), iv = setInterval(()=>{ if(ok() || Date.now()-t0 > 4000){ clearInterval(iv); r(); } }, 100);
+});
 async function refreshInner(first){
   await styleReady();
   $('live').textContent='⟳ يشيك…';
