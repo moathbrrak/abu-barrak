@@ -5,6 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       maxzoom: { description: 'أعلى تقريب للخريطة التفصيلية', default: '15' }
+  push:
+    branches: [main]
+    paths: ['tools/maps-run.txt']
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -33,9 +36,9 @@ jobs:
           SRC="https://build.protomaps.com/$D"
           # خريطة كاملة صغيرة تتحمل كلها على الجوال، وخريطة تفصيلية تتحمل حسب المنطقة
           pmtiles extract "$SRC" ksa-base.pmtiles --bbox="$BBOX" --maxzoom=10 --download-threads=8
-          pmtiles extract "$SRC" ksa.pmtiles --bbox="$BBOX" --maxzoom=${{ inputs.maxzoom }} --download-threads=8
+          pmtiles extract "$SRC" ksa.pmtiles --bbox="$BBOX" --maxzoom=${{ inputs.maxzoom || '15' }} --download-threads=8
           ls -la *.pmtiles
-          echo "{\"build\":\"$D\",\"bbox\":\"$BBOX\",\"maxzoom\":${{ inputs.maxzoom }},\"base_bytes\":$(stat -c%s ksa-base.pmtiles),\"full_bytes\":$(stat -c%s ksa.pmtiles)}" > maps.json
+          echo "{\"build\":\"$D\",\"bbox\":\"$BBOX\",\"maxzoom\":${{ inputs.maxzoom || '15' }},\"base_bytes\":$(stat -c%s ksa-base.pmtiles),\"full_bytes\":$(stat -c%s ksa.pmtiles)}" > maps.json
           cat maps.json
       - name: Upload to R2
         run: |
