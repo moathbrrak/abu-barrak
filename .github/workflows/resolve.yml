@@ -1,0 +1,36 @@
+# يفك روابط قوقل ماب لتطبيق «مسار»: التطبيق يشغّله، والنتيجة تنحفظ في فرع resolved
+name: resolve
+on:
+  workflow_dispatch:
+    inputs:
+      url: { description: 'رابط قوقل ماب', required: true }
+      id:  { description: 'رقم الطلب', required: true }
+  push:
+    branches: [main]
+    paths: ['tools/resolve-test.txt']
+permissions:
+  contents: write
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: tools }
+      - name: Resolve
+        env:
+          IN_URL: ${{ inputs.url }}
+          IN_ID: ${{ inputs.id }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          RUN: ${{ github.run_id }}
+        run: |
+          if [ "$EVENT" = "push" ]; then URL="$(head -1 tools/resolve-test.txt)"; ID="test-$RUN"; else URL="$IN_URL"; ID="$IN_ID"; fi
+          echo "$ID" | grep -Eq '^[a-z0-9-]{4,40}$' || { echo "bad id"; exit 1; }
+          node tools/resolve.mjs "$URL" > /tmp/out.json || echo '{"ok":false,"error":"script failed"}' > /tmp/out.json
+          cat /tmp/out.json | head -c 2000; echo
+          # ننشئ فرع النتائج أول مرة
+          gh api "repos/$REPO/git/ref/heads/resolved" >/dev/null 2>&1 || \
+            gh api -X POST "repos/$REPO/git/refs" -f ref=refs/heads/resolved -f sha="$(gh api repos/$REPO/git/ref/heads/main --jq .object.sha)" >/dev/null
+          gh api -X PUT "repos/$REPO/contents/r/$ID.json" -f message="resolve $ID" -f branch=resolved -f content="$(base64 -w0 /tmp/out.json)" >/dev/null
