@@ -26,7 +26,7 @@
     --card:rgba(255,255,255,.05); --card2:rgba(255,255,255,.08);
     --tx:#f4f0ff; --mut:#a59cc4; --acc:#ff7a59; --acc2:#a66bff; --acc-tx:#fff; --glow:rgba(255,122,89,.55);
     --rain:#5fb4ff; --warn:#ffb547; --bad:#ff5c7a; --ok:#58d68d;
-    --top:calc(env(safe-area-inset-top) + 104px); --peek:300px;
+    --top:calc(env(safe-area-inset-top) + 94px); --peek:300px;
   }
   [data-theme=green]{
     --bg:#0b140f; --glass:rgba(14,30,21,.62); --sheet:rgba(10,22,15,.95); --gb:rgba(255,255,255,.10);
@@ -45,7 +45,7 @@
   /* ======== الخريطة ======== */
   #map{position:fixed;inset:0;direction:ltr;touch-action:none;background:var(--bg)}
   .maplibregl-map{background:var(--bg)}
-  .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{bottom:var(--peek)}
+  .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{bottom:var(--vis,var(--peek));transition:bottom .3s}
   .maplibregl-ctrl-attrib{font-size:9px;opacity:.6}
   .maplibregl-popup-content{direction:rtl;text-align:right;font-family:inherit;background:var(--sheet);color:var(--tx);border:1px solid var(--gb);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   .maplibregl-popup-tip{border-top-color:var(--sheet)!important;border-bottom-color:var(--sheet)!important}
@@ -59,7 +59,7 @@
   .ml-t{font-size:11.5px;font-weight:400;color:rgba(255,255,255,.88)}
   .ml-k::before,.ml-t::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 4px #000}
   .ml-t::before{width:4px;height:4px;opacity:.8}
-  .pill{background:var(--glass);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border:1px solid var(--gb);border-radius:14px;padding:3px 10px;font:600 12px "IBM Plex Sans Arabic",sans-serif;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;gap:6px;align-items:center;cursor:pointer;direction:rtl}
+  .pill{background:var(--glass);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border:1px solid var(--gb);border-radius:12px;padding:2px 8px;font:600 11px "IBM Plex Sans Arabic",sans-serif;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;gap:6px;align-items:center;cursor:pointer;direction:rtl}
   .pill b{color:var(--acc);font-weight:700}
   .pill.cur{background:var(--acc);border-color:#fff;color:var(--acc-tx);box-shadow:0 0 16px var(--glow)}
   .pill.cur b{color:var(--acc-tx)}
@@ -67,28 +67,28 @@
 
   /* ======== الشريط العلوي ======== */
   .hdr{position:fixed;z-index:20;top:calc(env(safe-area-inset-top) + 6px);left:10px;right:10px;display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:20px}
-  .avatar{width:34px;height:34px;border-radius:11px;flex:none;box-shadow:0 0 0 2px var(--gb)}
+  .avatar{width:30px;height:30px;border-radius:10px;flex:none;box-shadow:0 0 0 2px var(--gb)}
   .cityb{flex:1;min-width:0;background:none;border:0;text-align:right;cursor:pointer;padding:0}
-  .cityb b{display:block;font-size:16px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cityb b{display:block;font-size:15px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .cityb b i{font-style:normal;font-size:12px;color:var(--mut);margin-inline-start:4px}
   .cityb span{display:block;font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ib{flex:none;width:36px;height:36px;border-radius:12px;border:1px solid var(--gb);background:rgba(255,255,255,.06);font-size:17px;cursor:pointer;display:grid;place-items:center;padding:0}
+  .ib{flex:none;width:32px;height:32px;border-radius:11px;border:1px solid var(--gb);background:rgba(255,255,255,.06);font-size:14px;cursor:pointer;display:grid;place-items:center;padding:0}
   .ib:active,.vbtn:active,.sbtn:active{transform:scale(.94)}
-  #refBtn{width:50px;height:40px;border-radius:14px;font-size:24px;background:var(--acc);border-color:var(--acc);color:var(--acc-tx);box-shadow:0 0 18px var(--glow)}
-  .tabs{position:fixed;z-index:20;top:calc(env(safe-area-inset-top) + 58px);left:10px;right:10px;display:flex;padding:3px;border-radius:15px;gap:2px}
-  .tabs button{flex:1;position:relative;border:0;background:none;border-radius:12px;padding:5px 4px;font-size:13px;font-weight:600;color:var(--mut);cursor:pointer;transition:background .2s,color .2s}
+  #refBtn{width:44px;height:34px;border-radius:12px;font-size:20px;background:var(--acc);border-color:var(--acc);color:var(--acc-tx);box-shadow:0 0 18px var(--glow)}
+  .tabs{position:fixed;z-index:20;top:calc(env(safe-area-inset-top) + 52px);left:10px;right:10px;display:flex;padding:3px;border-radius:15px;gap:2px}
+  .tabs button{flex:1;position:relative;border:0;background:none;border-radius:11px;padding:4px 4px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer;transition:background .2s,color .2s}
   .tabs button.on{background:var(--acc);color:var(--acc-tx);box-shadow:0 0 14px var(--glow)}
-  .badge{position:absolute;top:-3px;left:2px;min-width:16px;height:16px;border-radius:8px;background:var(--bad);color:#fff;font-size:10px;line-height:16px;padding:0 4px;display:none}
+  .badge{position:absolute;top:-3px;left:2px;min-width:14px;height:14px;border-radius:7px;background:var(--bad);color:#fff;font-size:9px;line-height:14px;padding:0 3px;display:none}
   .badge.show{display:block}
 
   /* ======== أزرار الطبقات (يمين) والتحكم (يسار) ======== */
-  .vcol{position:fixed;z-index:15;top:calc(var(--top) + 8px);display:flex;flex-direction:column;gap:7px}
+  .vcol{position:fixed;z-index:15;top:calc(var(--top) + 8px);display:flex;flex-direction:column;gap:6px}
   .vcol.r{right:10px} .vcol.l{left:10px}
-  .vbtn{width:50px;height:50px;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;cursor:pointer;padding:0;font-size:17px;line-height:1;transition:background .2s,box-shadow .2s}
-  .vbtn span{font-size:10px;font-weight:600;color:var(--mut)}
-  .vbtn.on{background:var(--acc);border-color:var(--acc);box-shadow:0 0 20px var(--glow)}
+  .vbtn{width:44px;height:44px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;padding:0;font-size:15px;line-height:1;transition:background .2s,box-shadow .2s}
+  .vbtn span{font-size:9px;font-weight:600;color:var(--mut)}
+  .vbtn.on{background:var(--acc);border-color:var(--acc);box-shadow:0 0 12px var(--glow)}
   .vbtn.on span{color:var(--acc-tx)}
-  .sbtn{width:42px;height:42px;border-radius:14px;font-size:18px;display:grid;place-items:center;cursor:pointer;padding:0}
+  .sbtn{width:38px;height:38px;border-radius:12px;font-size:15px;display:grid;place-items:center;cursor:pointer;padding:0}
   .sbtn.on{background:var(--acc);color:var(--acc-tx)}
 
   /* ======== القائمة ⋯ ======== */
@@ -104,7 +104,7 @@
 
   .newobs{display:none;position:fixed;z-index:30;top:calc(var(--top) + 10px);left:50%;transform:translateX(-50%);background:var(--bad);color:#fff;border-radius:20px;padding:6px 14px;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.5);max-width:58vw;text-align:center}
   .hint{display:none;position:fixed;z-index:30;left:50%;transform:translateX(-50%);top:calc(var(--top) + 10px);padding:8px 14px;border-radius:14px;font-size:13px;max-width:58vw;text-align:center}
-  .noteform{display:none;position:fixed;left:10px;right:10px;bottom:calc(var(--peek) + 12px);z-index:40;border-radius:18px;padding:12px;background:var(--sheet)}
+  .noteform{display:none;position:fixed;left:10px;right:10px;bottom:calc(var(--vis,var(--peek)) + 12px);z-index:40;border-radius:18px;padding:12px;background:var(--sheet)}
   .noteform.show{display:block}
   .noteform textarea{width:100%;margin:6px 0;background:var(--card2);color:var(--tx);border:1px solid var(--gb);border-radius:12px;padding:8px;font:inherit;font-size:16px}
   .row{display:flex;gap:8px}
@@ -114,15 +114,18 @@
   /* ======== اللوحة السفلية ======== */
   #sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;height:calc(100vh - var(--top) - 4px);height:calc(100dvh - var(--top) - 4px);background:var(--sheet);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid var(--gb);border-radius:28px 28px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);transform:translateY(calc(100% - var(--peek)));transition:transform .34s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;max-width:640px;margin:0 auto}
   #sheet.full{transform:translateY(0)}
+  #sheet.mini{transform:translateY(calc(100% - var(--mini,150px)))}
   #sheet.drag{transition:none}
   #sheetTop{padding:2px 14px 8px;touch-action:none;cursor:grab}
+  .handle{cursor:pointer}
+  .hwrap{display:flex;justify-content:center;padding:2px 0 4px}
   .handle{width:40px;height:4px;border-radius:3px;background:rgba(255,255,255,.22);margin:6px auto 4px}
   #sheetBody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:2px 14px calc(env(safe-area-inset-bottom) + 24px)}
   /* الملخص */
   .ph{display:flex;align-items:center;gap:8px}
   .ph .pl{flex:1;min-width:0}
   .pcity{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;color:var(--mut)}
-  .pcity svg{width:14px;height:14px;fill:var(--acc)}
+  .pcity svg{width:12px;height:12px;fill:var(--acc)}
   .ptemp{font-size:46px;font-weight:200;line-height:1;letter-spacing:-1.5px;margin-top:0}
   .ptemp sup{font-size:.45em;font-weight:300;vertical-align:top;position:relative;top:.15em;color:var(--acc)}
   .pverd{font-size:12.5px;color:var(--tx);opacity:.92;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -147,7 +150,7 @@
   .days3 em{font-style:normal;color:var(--rain);font-size:10.5px}
   /* شريط الوقت */
   .tl{display:flex;align-items:center;gap:10px;margin-top:20px}
-  .play{position:relative;flex:none;width:40px;height:40px;border-radius:50%;border:0;background:var(--acc);color:var(--acc-tx);font-size:14px;cursor:pointer;box-shadow:0 0 18px var(--glow)}
+  .play{position:relative;flex:none;width:36px;height:36px;border-radius:50%;border:0;background:var(--acc);color:var(--acc-tx);font-size:13px;cursor:pointer;box-shadow:0 0 18px var(--glow)}
   .play::before{content:'';position:absolute;inset:-5px;border-radius:50%;background:conic-gradient(from 0deg,transparent 0 62%,var(--acc) 100%);-webkit-mask:radial-gradient(closest-side,transparent 84%,#000 86%);mask:radial-gradient(closest-side,transparent 84%,#000 86%);animation:sp 3s linear infinite;opacity:.8}
   .play.on::before{animation-duration:.9s;opacity:1}
   .tlw{position:relative;flex:1;direction:ltr;height:24px}
@@ -267,11 +270,12 @@
   .place .x{border:0;background:none;color:var(--mut);font-size:16px;cursor:pointer;padding:4px 6px}
   .pane[hidden]{display:none}
   /* لما تنفتح اللوحة كاملة: الملخص يصغر عشان يبان المحتوى */
-  #sheet.full .pchips,#sheet.full .days3{display:none}
-  #sheet.full .ptemp{font-size:36px}
-  #sheet.full .illo{width:64px;height:52px}
-  #sheet.full .pill2{width:66px}
-  #sheet.full .tl{margin-top:18px}
+  #sheet.full .pchips,#sheet.full .days3,#sheet.mini .pchips,#sheet.mini .days3,#sheet.mini .hl{display:none}
+  #sheet.full .ptemp,#sheet.mini .ptemp{font-size:32px}
+  #sheet.full .illo,#sheet.mini .illo{width:56px;height:44px}
+  #sheet.full .pill2,#sheet.mini .pill2{width:58px}
+  #sheet.full .tl,#sheet.mini .tl{margin-top:16px}
+  #sheet.mini .pverd{font-size:12px}
   .ptemp,.illo,.pill2{transition:font-size .25s,width .25s,height .25s}
   @media (min-width:700px){ .hdr,.tabs{max-width:620px;margin:0 auto} }
 </style>
@@ -316,7 +320,7 @@
 <!-- اللوحة السفلية -->
 <div id="sheet">
   <div id="sheetTop">
-    <div class="handle"></div>
+    <div class="hwrap"><div class="handle" id="handle"></div></div>
     <div id="peek"><div class="sub"><span class="spin">⟳</span> جاري التحميل…</div></div>
     <div class="tl">
       <button class="play" id="rPlay">▶</button>
@@ -1055,7 +1059,7 @@ $('menu').onclick = e => {
     if(t==='city') flyToCity(true);
   }
 };
-const mapPad = () => ({top:20, bottom:(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--peek'))||300)-90, left:70, right:70});
+const mapPad = () => ({top:20, bottom:Math.max(20,(sheetSt==='mini'?MN:PK)-90), left:60, right:60});
 
 // ---------- سجل الرصد: 6 ساعات ----------
 // الرادار المجاني يعطي آخر ساعتين بس، فالـ6 ساعات يكمّلها مطر القمر الصناعي (صورة كل 30 د)
@@ -1343,45 +1347,68 @@ $('tShot').onclick = async () => {
   setTimeout(()=>btn.textContent='📷', 2500);
 };
 
-// ---------- اللوحة السفلية (تنسحب بالإصبع) ----------
+// ---------- اللوحة السفلية: 3 وضعيات (مصغّرة / متوسطة / كاملة) تسحبها بإصبعك ----------
 const sheet = $('sheet');
+let sheetSt = ['mini','mid'].includes(ls.get('sheetSt','mid')) ? ls.get('sheetSt','mid') : 'mid';
+const ROOT = document.documentElement.style;
+let PK = 280, MN = 150;
+// نقيس ارتفاع الملخص في الوضعين (بدون حركة)
 function setPeek(){
-  if(sheet.classList.contains('full')){ placeBubble(); return; }   // نقيس الملخص بس وهو مصغّر
-  const h = $('sheetTop').offsetHeight + 2;
-  document.documentElement.style.setProperty('--peek', h+'px');
-  placeBubble();
+  const cls = sheet.className;
+  sheet.classList.add('drag'); sheet.classList.remove('full','mini');
+  PK = $('sheetTop').offsetHeight + 2;
+  sheet.classList.add('mini');
+  MN = $('sheetTop').offsetHeight + 2;
+  sheet.className = cls;
+  ROOT.setProperty('--peek', PK+'px'); ROOT.setProperty('--mini', MN+'px');
+  ROOT.setProperty('--vis', (sheetSt==='mini'?MN:PK)+'px');
+  requestAnimationFrame(placeBubble);
 }
-function openSheet(full){
-  sheet.classList.toggle('full', !!full);
-  if(!full && pane!=='now') setPane('now');
-  if(!full) setPeek(); else placeBubble();
+function setSheet(st){
+  sheetSt = st;
+  sheet.classList.toggle('full', st==='full'); sheet.classList.toggle('mini', st==='mini');
+  if(st!=='full'){ ls.set('sheetSt', st); if(pane!=='now') setPane('now'); }
+  ROOT.setProperty('--vis', (st==='mini'?MN:PK)+'px');
+  requestAnimationFrame(placeBubble);
 }
+function openSheet(full){ setSheet(full ? 'full' : 'mid'); }
 (function(){
-  let y0=null, base=0, moved=false, t0=0;
-  const top = $('sheetTop');
-  const H = () => sheet.offsetHeight, P = () => parseInt(getComputedStyle(document.documentElement).getPropertyValue('--peek'))||300;
-  top.addEventListener('pointerdown', e => {
-    if(e.target.closest('button,input')) return;
-    y0 = e.clientY; t0 = Date.now(); moved=false;
-    base = sheet.classList.contains('full') ? 0 : H()-P();
-    sheet.classList.add('drag'); top.setPointerCapture(e.pointerId);
-  });
-  top.addEventListener('pointermove', e => {
-    if(y0===null) return;
-    const dy = e.clientY - y0; if(Math.abs(dy)>4) moved=true;
-    const y = Math.min(H()-P(), Math.max(0, base+dy));
-    sheet.style.transform = `translateY(${y}px)`;
-  });
-  const end = e => {
-    if(y0===null) return;
-    const dy = e.clientY - y0, fast = Math.abs(dy)/(Date.now()-t0) > 0.5;
+  const top = $('sheetTop'), body = $('sheetBody');
+  const H = () => sheet.offsetHeight;
+  const posOf = st => st==='full' ? 0 : st==='mid' ? H()-PK : H()-MN;
+  let y0=null, base=0, moved=false, t0=0, lastY=0, lastT=0, vel=0;
+  function begin(y){ y0=y; t0=lastT=Date.now(); lastY=y; vel=0; moved=false; base=posOf(sheetSt); sheet.classList.add('drag'); }
+  function move(y){
+    const dy = y - y0; if(Math.abs(dy)>5) moved=true;
+    const now = Date.now(); if(now>lastT){ vel = (y-lastY)/(now-lastT); lastY=y; lastT=now; }
+    let p = base+dy; const mx = H()-MN;
+    if(p<0) p = p/3; if(p>mx) p = mx + (p-mx)/3;   // مقاومة عند الأطراف
+    sheet.style.transform = `translateY(${p}px)`;
+    return p;
+  }
+  function finish(y){
+    const p = base + (y - y0);
     sheet.classList.remove('drag'); sheet.style.transform='';
-    if(!moved) openSheet(!sheet.classList.contains('full'));
-    else if(fast) openSheet(dy<0);
-    else openSheet(base+dy < (H()-P())/2);
-    y0=null;
-  };
-  top.addEventListener('pointerup', end); top.addEventListener('pointercancel', end);
+    const order = ['full','mid','mini'], k = order.indexOf(sheetSt);
+    let st;
+    if(!moved) st = sheetSt==='full' ? 'mid' : sheetSt==='mid' ? 'full' : 'mid';   // لمسة: تكبير/تصغير
+    else if(Math.abs(vel) > 0.6) st = order[Math.max(0, Math.min(2, k + (vel>0?1:-1) * (Math.abs(vel)>2.2?2:1)))];
+    else st = order.map(s=>[s, Math.abs(posOf(s)-p)]).sort((a,b)=>a[1]-b[1])[0][0];   // أقرب وضعية
+    y0 = null; setSheet(st);
+  }
+  top.addEventListener('pointerdown', e => { if(e.target.closest('button,input')) return; begin(e.clientY); top.setPointerCapture(e.pointerId); });
+  top.addEventListener('pointermove', e => { if(y0!==null) move(e.clientY); });
+  top.addEventListener('pointerup', e => { if(y0!==null) finish(e.clientY); });
+  top.addEventListener('pointercancel', e => { if(y0!==null) finish(e.clientY); });
+  // لما تكون فوق محتوى اللوحة: اسحب لتحت ينزلها
+  let by=null, bDrag=false;
+  body.addEventListener('touchstart', e => { by = e.touches[0].clientY; bDrag=false; }, {passive:true});
+  body.addEventListener('touchmove', e => {
+    if(by===null) return; const y = e.touches[0].clientY;
+    if(!bDrag && body.scrollTop<=0 && y-by>8){ bDrag=true; begin(by); }
+    if(bDrag){ e.preventDefault(); move(y); }
+  }, {passive:false});
+  body.addEventListener('touchend', e => { if(bDrag) finish(e.changedTouches[0].clientY); by=null; bDrag=false; });
   window.addEventListener('resize', setPeek);
 })();
 function hint(msg){ const h=$('hint'); h.textContent=msg; h.style.display = msg?'block':'none'; }
@@ -1408,6 +1435,7 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
 
 renderLyr();
 setPeek();
+setSheet(sheetSt);
 load();
 openRadar();
 document.addEventListener('visibilitychange', ()=>{
