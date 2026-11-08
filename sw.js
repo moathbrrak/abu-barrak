@@ -1,7 +1,7 @@
 // اخايله – Service Worker
 // الصفحة: من الشبكة أولاً (عشان أي تحديث ترفعه يوصل على طول)، ولو ما فيه نت يفتح آخر نسخة محفوظة
 // المكتبات والأيقونات: من الذاكرة أولاً (أسرع)
-const CACHE = 'akhila-v2';
+const CACHE = 'akhila-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -18,8 +18,8 @@ self.addEventListener('fetch', e => {
   if (req.mode === 'navigate' || (url.origin === location.origin && url.pathname.endsWith('.html'))) {
     e.respondWith(
       fetch(req, {cache: 'no-store'})
-        .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put('./index.html', copy)); return r; })
-        .catch(() => caches.match('./index.html'))
+        .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return r; })
+        .catch(() => caches.match(req, {ignoreSearch:true}).then(hit => hit || caches.match('./index.html')))
     );
     return;
   }

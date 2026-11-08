@@ -300,11 +300,14 @@ function accum(b){
 }
 // تقدير القمر الصناعي: يجمع شدة المطر في النقطة من كل صورة (كل 10 د) لآخر 6 ساعات
 const satAccCache = {};
+let satTimesCache = null;
 async function satTimes(ws,id,hours,stepMin){
+  if(satTimesCache && Date.now()-satTimesCache.at<5*60e3 && satTimesCache.k===hours+'/'+stepMin) return satTimesCache.v;
   const r=await fetch(`https://view.eumetsat.int/geoserver/${ws}/${id}/ows?service=WMS&version=1.3.0&request=GetCapabilities`);
   const t=await r.text(); const dim=(t.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)</)||[])[1]||'';
   const last=dim.split(',').pop().split('/'); const end=new Date(last.length===3?last[1]:last[0]).getTime();
   const out=[]; for(let x=end; x>end-hours*3600e3; x-=stepMin*60e3) out.unshift(new Date(x).toISOString());
+  satTimesCache={at:Date.now(), k:hours+'/'+stepMin, v:out};
   return out;
 }
 async function pointRate(time,lat,lon){
@@ -312,12 +315,12 @@ async function pointRate(time,lat,lon){
   const j=await getJSON(u,10000); const p=j.features?.[0]?.properties; return p? (p.Instantaneous_rain_rate||0) : null;
 }
 async function satAccum6h(lat,lon){
-  const times=await satTimes('mtg_fd','h40b',6,10);
+  const times=await satTimes('mtg_fd','h40b',6,20);
   const key=`${lat.toFixed(2)},${lon.toFixed(2)},${times.at(-1)}`;
   if(!satAccCache[key]) satAccCache[key] = (async()=>{
     const rates=new Array(times.length); let i=0;
     await Promise.all(Array.from({length:6},async()=>{ while(i<times.length){ const k=i++; try{rates[k]=await pointRate(times[k],lat,lon);}catch(e){rates[k]=null;} } }));
-    const ok=rates.filter(v=>v!=null); const mm=ok.reduce((a,v)=>a+v*10/60,0);
+    const ok=rates.filter(v=>v!=null); const mm=ok.reduce((a,v)=>a+v*20/60,0);
     return {mm, now:rates[rates.length-1], n:ok.length, total:times.length, end:times.at(-1)};
   })();
   return satAccCache[key];
@@ -415,7 +418,7 @@ function render(d, stale){
     </div>
   </div>`;
   $('app').innerHTML = html;
-  satAccum(c).then(v=>{ const el=$('satAcc'); if(el) el.innerHTML = v; });
+  clearTimeout(render.accT); render.accT = setTimeout(()=>satAccum(c).then(v=>{ const el=$('satAcc'); if(el) el.innerHTML = v; }), stale ? 2500 : 300);
 }
 
 // ================= الرادار =================
@@ -521,8 +524,8 @@ function applyLyr(){
 }
 
 // ---------- سجل الرصد: 6 ساعات ----------
-// الرادار (RainViewer المجاني) يعطي آخر ساعتين فقط، فالـ6 ساعات تكمّلها صور مطر القمر الصناعي (كل 20 د)
-const STEP = 10*60e3, HOURS = 6, SAT_STEP_MIN = 20;
+// الرادار (RainViewer المجاني) يعطي آخر ساعتين فقط، فالـ6 ساعات تكمّلها صور مطر القمر الصناعي (كل 30 د)
+const STEP = 10*60e3, HOURS = 6, SAT_STEP_MIN = 30;
 let frames = [], radLayers = {}, satFrames = [], satLayers = {}, steps = [], fi = 0, timer = null;
 const r10 = t => Math.round(t/STEP)*STEP;
 
@@ -538,41 +541,43 @@ function buildSteps(keepEnd){
 function radAt(t){ const f = frames.find(f=>r10(f.time*1000)===t); return f ? f.path : null; }
 function satAt(t){ let best=null; for(const s of satFrames){ if(new Date(s).getTime()<=t+60e3) best=s; } return best; }
 
+// أداء: ما نخلي على الخريطة إلا الإطار الحالي واللي بعده (بدل 30+ طبقة كانت تحمّل كلها مع كل تحريك وتعلّق الجوال)
+const LIGHT = {updateWhenIdle:true, updateWhenZooming:false, keepBuffer:1};
 function ensureRad(path){
-  if(!radLayers[path]) radLayers[path] = L.tileLayer(`${rvHost}${path}/256/{z}/{x}/{y}/2/1_1.png`, {...CO, tileSize:256, opacity:0, zIndex:10, maxNativeZoom:7, maxZoom:17}).addTo(map);
+  if(!radLayers[path]) radLayers[path] = L.tileLayer(`${rvHost}${path}/256/{z}/{x}/{y}/2/1_1.png`, {...CO, ...LIGHT, tileSize:256, opacity:0, zIndex:10, maxNativeZoom:7, maxZoom:17});
   return radLayers[path];
 }
 function ensureSat(time){
-  if(!satLayers[time]) satLayers[time] = L.tileLayer.wms(EUM+'wms', {...CO, layers:'mtg_fd:h40b', format:'image/png', transparent:true, version:'1.3.0', time, tileSize:512, opacity:0, zIndex:8, attribution:'© EUMETSAT'}).addTo(map);
+  if(!satLayers[time]) satLayers[time] = L.tileLayer.wms(EUM+'wms', {...CO, ...LIGHT, layers:'mtg_fd:h40b', format:'image/png', transparent:true, version:'1.3.0', time, tileSize:512, opacity:0, zIndex:8, attribution:'© EUMETSAT'});
   return satLayers[time];
 }
 function show(i){
   if(!steps.length || !map) return;
   fi = Math.max(0, Math.min(i, steps.length-1));
   const t = steps[fi], rp = lyrOn.rad ? radAt(t) : null, sp = lyrOn.sat ? satAt(t) : null;
-  if(rp) ensureRad(rp);
-  if(sp) ensureSat(sp);
-  for(const [p,l] of Object.entries(radLayers)) l.setOpacity(p===rp ? 0.8 : 0);
-  for(const [s,l] of Object.entries(satLayers)) l.setOpacity(s===sp ? LYR.sat.op : 0);
+  // الإطار الحالي + اللي بعده (يتحمّل مسبقاً وهو مخفي عشان التشغيل يكون سلس)
+  const nt = steps[(fi+1) % steps.length];
+  const needR = new Set([rp, lyrOn.rad && timer ? radAt(nt) : null].filter(Boolean));
+  const needS = new Set([sp, lyrOn.sat && timer ? satAt(nt) : null].filter(Boolean));
+  needR.forEach(ensureRad); needS.forEach(ensureSat);
+  const sync = (store, need, vis, op) => { for(const [k,l] of Object.entries(store)){
+    if(need.has(k)){ if(!map.hasLayer(l)) l.addTo(map); l.setOpacity(k===vis ? op : 0); }
+    else if(map.hasLayer(l)) map.removeLayer(l); } };
+  sync(radLayers, needR, rp, 0.8);
+  sync(satLayers, needS, sp, LYR.sat.op);
   $('rSlider').value = fi;
   $('rTime').textContent = new Date(t).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
   const ago = Math.round((steps.at(-1)-t)/60000);
   $('tlSrc').textContent = `${ago? `قبل ${Math.floor(ago/60)? Math.floor(ago/60)+' س ':''}${ago%60? ago%60+' د':''}` : 'آخر رصد'} · ${rp?'📡 رادار':''}${rp&&sp?' + ':''}${sp?'🛰️ قمر':''}${!rp&&!sp?'ما فيه بيانات لهالوقت':''}${!rp&&lyrOn.rad&&ago>120?' (الرادار المجاني يحفظ ساعتين بس)':''}`;
 }
-// تحميل مسبق تدريجي لكل الإطارات عشان التشغيل يكون سلس
-function preload(){
-  const todo = [];
-  steps.slice().reverse().forEach(t=>{ const rp=radAt(t), sp=satAt(t);
-    if(lyrOn.rad && rp && !radLayers[rp]) todo.push(()=>ensureRad(rp));
-    if(lyrOn.sat && sp && !satLayers[sp]) todo.push(()=>ensureSat(sp)); });
-  let k=0; const next=()=>{ if(k>=todo.length) return; todo[k++](); setTimeout(next, 300); }; setTimeout(next, 600);
-}
-function stopPlay(){ clearInterval(timer); timer=null; $('rPlay').textContent='▶'; }
+function preload(){ /* صار التحميل المسبق إطار بإطار داخل show() */ }
+function stopPlay(){ clearInterval(timer); timer=null; $('rPlay').textContent='▶'; if(map && steps.length) show(fi); }
 $('rPlay').onclick = () => {
   if(timer){ stopPlay(); return; }
   $('rPlay').textContent='⏸';
   if(fi>=steps.length-1) fi=0;
-  timer = setInterval(()=>{ if(fi>=steps.length-1){ show(0); } else show(fi+1); }, 500);
+  timer = setInterval(()=>{ show(fi>=steps.length-1 ? 0 : fi+1); }, 700);
+  show(fi);
 };
 $('rSlider').oninput = e => { stopPlay(); show(+e.target.value); };
 
@@ -611,7 +616,7 @@ async function loadOverlays(){
       wmsTime[k] = t;
       if(wms[k]) wms[k].setParams({time:t});
       else wms[k] = L.tileLayer.wms(EUM+'wms', {...CO, layers:`${LYR[k].ws}:${LYR[k].id}`, format:'image/png', transparent:true,
-        version:'1.3.0', time:t, tileSize:512, opacity:LYR[k].op, zIndex:LYR[k].z, attribution:'© EUMETSAT'});
+        ...LIGHT, version:'1.3.0', time:t, tileSize:512, opacity:LYR[k].op, zIndex:LYR[k].z, attribution:'© EUMETSAT'});
     }catch(e){}
   }));
 }
