@@ -1,0 +1,45 @@
+# يقص خريطة السعودية والجزيرة العربية من Protomaps ويرفعها لـ Cloudflare R2
+# يشتغل يدوياً من تبويب Actions (Run workflow)
+name: maps
+on:
+  workflow_dispatch:
+    inputs:
+      maxzoom: { description: 'أعلى تقريب للخريطة التفصيلية', default: '15' }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BBOX: '34.4,15.5,56.5,32.5'   # السعودية وما حولها
+      BUCKET: akhila-maps
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check secrets
+        run: |
+          [ -n "$AWS_ACCESS_KEY_ID" ] && [ -n "$AWS_SECRET_ACCESS_KEY" ] || { echo "::error::ضيف R2_ACCESS_KEY_ID و R2_SECRET_ACCESS_KEY و R2_ACCOUNT_ID في Secrets"; exit 1; }
+      - name: Install pmtiles
+        run: |
+          URL=$(gh api repos/protomaps/go-pmtiles/releases/latest --jq '.assets[] | select(.name|test("Linux_x86_64.tar.gz$")) | .browser_download_url')
+          curl -sSL "$URL" | tar xz -C /usr/local/bin pmtiles
+          pmtiles version || true
+      - name: Extract
+        run: |
+          D=$(curl -sS https://build-metadata.protomaps.dev/builds.json | jq -r '.[-1].key')
+          echo "build: $D"
+          SRC="https://build.protomaps.com/$D"
+          # خريطة كاملة صغيرة تتحمل كلها على الجوال، وخريطة تفصيلية تتحمل حسب المنطقة
+          pmtiles extract "$SRC" ksa-base.pmtiles --bbox="$BBOX" --maxzoom=10 --download-threads=8
+          pmtiles extract "$SRC" ksa.pmtiles --bbox="$BBOX" --maxzoom=${{ inputs.maxzoom }} --download-threads=8
+          ls -la *.pmtiles
+          echo "{\"build\":\"$D\",\"bbox\":\"$BBOX\",\"maxzoom\":${{ inputs.maxzoom }},\"base_bytes\":$(stat -c%s ksa-base.pmtiles),\"full_bytes\":$(stat -c%s ksa.pmtiles)}" > maps.json
+          cat maps.json
+      - name: Upload to R2
+        run: |
+          for f in ksa-base.pmtiles ksa.pmtiles maps.json; do
+            aws s3 cp "$f" "s3://$BUCKET/$f" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          done
+          echo "تم الرفع"
