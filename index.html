@@ -1834,7 +1834,8 @@ async function renderTrip(){
       const mm = f.precipitation_sum[k]||0, pr = f.precipitation_probability_max[k]||0, wc = f.weather_code[k]||0;
       const dn = k===0 ? 'اليوم' : k===1 ? 'بكرة' : AR_DAYS[new Date(d+'T12:00').getDay()];
       const cls = wc>=95 ? 'storm' : (mm>=RAIN_MM || pr>=40) ? 'wet' : '';
-      return `<span class="trday ${cls}">${dn}: ${mm>=RAIN_MM ? (wc>=95?'⛈️ ':'🌧️ ')+mm.toFixed(1)+' مم' : '☀️ صحو'}${pr?` · ${pr}%`:''}</span>`;
+      const txt = mm>=RAIN_MM ? (wc>=95?'⛈️ ':'🌧️ ')+mm.toFixed(1)+' مم' : pr>=40 ? '🌦️ محتمل' : '☀️ صحو';
+      return `<span class="trday ${cls}">${dn}: ${txt}${pr>=10?` · ${pr}%`:''}</span>`;
     }).join('');
     else days = '<span class="trday">ما قدرت أجيب التوقعات</span>';
     return `<div class="trstop"><div class="trn">${i+1}</div><div class="trb"><b>${esc(s.name||'وقفة')}</b>${s.note?`<p>${esc(s.note)}</p>`:''}<div class="trdays">${days}</div></div><button class="trgo" data-tgo="${i}" title="خذني لها">🧭</button></div>`;
