@@ -327,18 +327,21 @@ function toast(m, ms=2200){ const el=$('#toast'); el.textContent=m; el.classList
 const EOX = 'https://tiles.maps.eox.at/wmts/1.0.0/';
 const eox = (l, ext='jpg') => `${EOX}${l}/default/g/{z}/{y}/{x}.${ext}`;
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
-const LBL = {u:eox('overlay_base_bright_3857','png'), max:16};
+
 const BASES = {
-  sat:    {name:'قمر صناعي', layers:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', max:17}, LBL], attr:'Imagery © Esri, Maxar · © OSM, EOX', thumb:ESRI+'World_Imagery/MapServer/tile/7/56/77'},
-  sat2:   {name:'قمر صناعي (بديل)', layers:[{u:eox('s2cloudless-2024_3857'), max:15, paint:{'raster-contrast':.15}}, LBL], attr:'Sentinel-2 cloudless © EOX, © OSM', thumb:EOX+'s2cloudless-2024_3857/default/g/7/56/77.jpg'},
+  // الصور حتى تقريب 17 في كل مكان، وفوقها طبقة أدق (18-19) تطلع بس في الأماكن اللي لها صور، والباقي يكبّر اللي تحت
+  sat:    {name:'قمر صناعي', labels:true, layers:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', max:17}, {u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', min:18, max:19}], attr:'Imagery © Esri, Maxar · © OpenStreetMap, OpenFreeMap', thumb:ESRI+'World_Imagery/MapServer/tile/7/56/77'},
+  sat2:   {name:'قمر صناعي (بديل)', labels:true, layers:[{u:eox('s2cloudless-2024_3857'), max:15, paint:{'raster-contrast':.15}}], attr:'Sentinel-2 cloudless © EOX, © OSM', thumb:EOX+'s2cloudless-2024_3857/default/g/7/56/77.jpg'},
   osm:    {name:'شوارع', layers:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max:19}], attr:'© OpenStreetMap', thumb:'https://tile.openstreetmap.org/7/77/56.png'},
-  terrain:{name:'تضاريس', layers:[{u:eox('terrain_3857'), max:16}], attr:'Terrain © EOX, © OSM', thumb:EOX+'terrain_3857/default/g/7/56/77.jpg'},
+  terrain:{name:'تضاريس', labels:true, layers:[{u:eox('terrain_3857'), max:16}], attr:'Terrain © EOX, © OSM', thumb:EOX+'terrain_3857/default/g/7/56/77.jpg'},
 };
 let baseKey = ls.get('base2', 'sat');
 const startView = ls.get('view', {c:[39.19,21.54], z:9});
+// يخلي الحروف العربية متصلة وباتجاه صحيح في أسماء الخريطة
+try{ maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', true); }catch(e){}
 const map = new maplibregl.Map({
   container:'map', center:startView.c, zoom:startView.z,
-  style:{version:8, sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':'#1f2a25'}}]},
+  style:{version:8, glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':'#1f2a25'}}]},
   attributionControl:{compact:true}, dragRotate:false, pitchWithRotate:false, maxZoom:19
 });
 map.touchZoomRotate.disableRotation();
@@ -352,11 +355,63 @@ function setBase(k){
   const b = BASES[k];
   b.layers.forEach((x,i)=>{
     const id = 'base'+i;
-    map.addSource(id, {type:'raster', tiles:[x.u], tileSize:256, maxzoom:x.max, attribution:i?'':b.attr});
-    map.addLayer({id, type:'raster', source:id, paint:{'raster-fade-duration':100, ...(x.paint||{})}}, map.getLayer('route-case') ? 'route-case' : undefined);
+    map.addSource(id, {type:'raster', tiles:[x.u], tileSize:256, minzoom:x.min||0, maxzoom:x.max, attribution:i?'':b.attr});
+    map.addLayer({id, type:'raster', source:id, minzoom:x.min||0, paint:{'raster-fade-duration':100, ...(x.paint||{})}}, map.getLayer('route-case') ? 'route-case' : undefined);
     baseIds.push(id);
   });
   baseKey = k; ls.set('base2', k);
+  setLabels(!!b.labels);
+}
+
+// ================= الأسماء بالعربي (طبقة كتابة فوق الصور) =================
+const AR = ['coalesce',['get','name:ar'],['get','name']];
+const HALO = {'text-color':'#ffffff','text-halo-color':'rgba(0,0,0,.85)','text-halo-width':1.6,'text-halo-blur':.3};
+const LABEL_LAYERS = [
+  {id:'lb-road', type:'line', 'source-layer':'transportation', minzoom:8,
+    filter:['in',['get','class'],['literal',['motorway','trunk','primary','secondary']]],
+    paint:{'line-color':'rgba(255,255,255,.45)','line-width':['interpolate',['linear'],['zoom'],8,.6,14,2.2]}},
+  {id:'lb-road-minor', type:'line', 'source-layer':'transportation', minzoom:14,
+    filter:['in',['get','class'],['literal',['tertiary','minor','service']]],
+    paint:{'line-color':'rgba(255,255,255,.28)','line-width':['interpolate',['linear'],['zoom'],14,.6,18,2]}},
+  {id:'lb-roadname', type:'symbol', 'source-layer':'transportation_name', minzoom:12,
+    layout:{'symbol-placement':'line','text-field':AR,'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],12,11,17,14],'text-max-angle':30},
+    paint:HALO},
+  {id:'lb-peak', type:'symbol', 'source-layer':'mountain_peak', minzoom:11,
+    layout:{'text-field':AR,'text-font':['Noto Sans Regular'],'text-size':12,'text-offset':[0,.2],'text-anchor':'top'},
+    paint:{...HALO,'text-color':'#ffe7b0'}},
+  {id:'lb-poi', type:'symbol', 'source-layer':'poi', minzoom:15,
+    filter:['<=',['coalesce',['get','rank'],99],30],
+    layout:{'text-field':AR,'text-font':['Noto Sans Regular'],'text-size':12,'text-max-width':8},
+    paint:{...HALO,'text-color':'#f2f2f2'}},
+  {id:'lb-place-small', type:'symbol', 'source-layer':'place', minzoom:11,
+    filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter','hamlet','isolated_dwelling','locality']]],
+    layout:{'text-field':AR,'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,11,16,14],'text-max-width':8},
+    paint:HALO},
+  {id:'lb-village', type:'symbol', 'source-layer':'place', minzoom:9,
+    filter:['==',['get','class'],'village'],
+    layout:{'text-field':AR,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],9,11,15,15],'text-max-width':8},
+    paint:HALO},
+  {id:'lb-town', type:'symbol', 'source-layer':'place', minzoom:6,
+    filter:['==',['get','class'],'town'],
+    layout:{'text-field':AR,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],6,11,14,17],'text-max-width':8},
+    paint:HALO},
+  {id:'lb-city', type:'symbol', 'source-layer':'place', minzoom:3,
+    filter:['==',['get','class'],'city'],
+    layout:{'text-field':AR,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],4,12,12,20],'text-max-width':8},
+    paint:HALO},
+];
+function setLabels(on){
+  const has = !!map.getLayer('lb-city');
+  if(on && !has){
+    if(!map.getSource('ofm')) map.addSource('ofm', {type:'vector', url:'https://tiles.openfreemap.org/planet', attribution:'© OpenStreetMap, OpenFreeMap'});
+    LABEL_LAYERS.forEach(l=>{
+      // خطوط الشوارع تحت المسار، والكتابة فوقه
+      const before = l.type==='line' && map.getLayer('route-case') ? 'route-case' : undefined;
+      map.addLayer({...l, source:'ofm'}, before);
+    });
+  } else if(!on && has){
+    LABEL_LAYERS.forEach(l=>map.getLayer(l.id) && map.removeLayer(l.id));
+  }
 }
 
 // طبقة المسار
@@ -367,7 +422,7 @@ function initRoute(){
   map.addLayer({id:'route-straight', type:'line', source:'route', filter:['get','straight'], paint:{'line-color':'#ffffff','line-width':3,'line-dasharray':[2,2]}});
 }
 
-map.on('load', ()=>{ setBase(baseKey); initRoute(); render(); fitAll(false); });
+map.on('load', ()=>{ initRoute(); setBase(baseKey); render(); fitAll(false); });
 map.on('moveend', ()=>{ const c=map.getCenter(); ls.set('view', {c:[+c.lng.toFixed(5), +c.lat.toFixed(5)], z:+map.getZoom().toFixed(2)}); });
 
 // ================= العلامات =================
