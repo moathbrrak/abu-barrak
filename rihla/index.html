@@ -236,7 +236,7 @@
       <div class="row"><input id="pasteIn" autocomplete="off" dir="ltr" placeholder="https://maps.app.goo.gl/…" style="flex:1"><button class="btn" id="pasteClip" style="flex:none;width:auto">الصق</button></div></label>
     <button class="btn main" id="pasteGo" style="width:100%">اقرأ الرابط</button>
     <div id="gPrev"></div>
-    <p class="hint">في قوقل ماب: سوّ المسار بوقفاته، اضغط مشاركة ← نسخ، وارجع هنا والصقه.</p>
+    <p class="hint">في قوقل ماب: سوّ المسار أو افتح قائمة أماكنك، اضغط مشاركة ← نسخ، وارجع هنا والصقه. <a href="#" id="ghOpen" style="color:var(--sign);font-weight:600">إعداد قراءة الروابط</a></p>
   </div>
   <div data-p="bulk" hidden>
     <label class="fld"><span>كل موقع في سطر: اسم، أو إحداثيات، أو رابط. تقدر تكتب الاسم قبل الإحداثيات.</span><textarea id="bulkIn" placeholder="الطائف&#10;الهدا 21.3667, 40.2833"></textarea></label>
@@ -269,6 +269,22 @@
   <div id="tripsList" style="margin:-8px 0 16px"></div>
   <div class="row" style="margin-bottom:8px"><button class="btn main" id="newTrip"><svg><use href="#i-plus"/></svg>رحلة جديدة</button><button class="btn" id="renTrip"><svg><use href="#i-edit"/></svg>غيّر الاسم</button></div>
   <div class="row"><button class="btn" id="dupTrip"><svg><use href="#i-copy"/></svg>انسخها</button><button class="btn bad" id="delTrip"><svg><use href="#i-trash"/></svg>احذفها</button></div>
+</div></div>
+
+<!-- قراءة روابط قوقل عن طريق GitHub -->
+<div class="ov" id="ghOv"><div class="dlg">
+  <h3>قراءة روابط قوقل <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
+  <p class="hint" style="margin-top:-8px">الروابط المختصرة وقوائم الأماكن يفتحها لك GitHub من حسابك. تسوي مفتاح مرة وحدة بس، ويبقى في جوالك.</p>
+  <ol class="hint" style="padding-inline-start:20px;margin-bottom:12px">
+    <li>افتح <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--sign);font-weight:600">صفحة المفاتيح في GitHub</a>.</li>
+    <li>Token name: اكتب <b>مسار</b>. وفي Expiration اختر أطول مدة.</li>
+    <li>Repository access: اختر <b>Only select repositories</b> ثم <b>abu-barrak</b>.</li>
+    <li>Permissions ← Repository permissions: خل <b>Actions</b> على <b>Read and write</b>، و<b>Contents</b> على <b>Read-only</b>.</li>
+    <li>اضغط Generate token، انسخ المفتاح، والصقه هنا.</li>
+  </ol>
+  <label class="fld"><span>المفتاح</span><input id="ghTok" dir="ltr" autocomplete="off" placeholder="github_pat_…"></label>
+  <div class="row"><button class="btn main" id="ghSave">احفظ المفتاح</button><button class="btn" id="ghDel">احذفه</button></div>
+  <p class="hint" id="ghMsg"></p>
 </div></div>
 
 <!-- المزيد -->
@@ -616,7 +632,7 @@ async function expandShort(u){
     async ()=>{ const r = await fetch('https://corsproxy.io/?url='+encodeURIComponent(u)); return pick(await r.text()); },
     async ()=>{ const r = await fetch('https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u)); return pick(await r.text()); },
   ];
-  for(const t of tries){ try{ const x = await t(); if(x) return x; }catch(e){} }
+  for(const t of tries){ try{ const x = await Promise.race([t(), new Promise(r=>setTimeout(()=>r(null), 6000))]); if(x) return x; }catch(e){} }
   return null;
 }
 const dec = x => { try{ return decodeURIComponent(x.replace(/\+/g,' ')); }catch(e){ return x.replace(/\+/g,' '); } };
@@ -669,11 +685,50 @@ async function fillCoords(list, onStep){
   return list;
 }
 // من أي نص (رابط مختصر، طويل، إحداثيات) إلى قائمة وقفات
+const GH_REPO = 'moathbrrak/abu-barrak';
+const ghTok = () => ls.get('ghtok', '');
+// يشغّل خدمة الفك في GitHub Actions، وينتظر النتيجة في فرع resolved
+async function ghResolve(u, onStep){
+  const tok = ghTok(); if(!tok) return {err:'token'};
+  const id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const H = {'Authorization':'Bearer '+tok, 'Accept':'application/vnd.github+json', 'X-GitHub-Api-Version':'2022-11-28'};
+  onStep && onStep('أرسل الرابط لـ GitHub…');
+  let r;
+  try{ r = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/resolve.yml/dispatches`, {method:'POST', headers:{...H,'Content-Type':'application/json'}, body:JSON.stringify({ref:'main', inputs:{url:u, id}})}); }
+  catch(e){ return {err:'net'}; }
+  if(r.status===401 || r.status===403 || r.status===404) return {err:'badtoken'};
+  if(!r.ok) return {err:'net'};
+  const t0 = Date.now();
+  while(Date.now()-t0 < 150000){
+    await new Promise(x=>setTimeout(x, 3000));
+    onStep && onStep(`GitHub يقرأ الرابط… ${Math.round((Date.now()-t0)/1000)} ث (عادة أقل من دقيقة)`);
+    try{
+      const q = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/r/${id}.json?ref=resolved&t=${Date.now()}`, {headers:{...H,'Accept':'application/vnd.github.raw+json'}, cache:'no-store'});
+      if(q.ok) return await q.json();
+    }catch(e){}
+  }
+  return {err:'timeout'};
+}
+const isList = u => /placelists\/list\/|!11m1!2s/.test(u);
 async function readGoogle(txt, onStep){
   txt = String(txt||'').trim();
   let u = (txt.match(URL_RE)||[])[0];
   if(!u){ const p = parseLoc(txt); return p ? [{name:cleanName(p.rest||''), lat:p.lat, lng:p.lng}] : null; }
-  if(isShort(u)){ onStep && onStep('أفتح الرابط المختصر…'); const long = await expandShort(u); if(!long) return {err:'short'}; u = long; }
+  if(isShort(u) || isList(u)){
+    if(ghTok()){
+      const g = await ghResolve(u, onStep);
+      if(g.err) return g;
+      if(g.list) return Object.assign(g.list.items.slice().reverse().map(x=>({name:x.name, note:x.note||'', lat:x.lat, lng:x.lng})), {listName:g.list.name});
+      if(!g.ok || !g.final) return {err:'gfail'};
+      u = g.final;
+      if(isList(u)) return {err:'gfail'};
+    } else {
+      onStep && onStep('أفتح الرابط المختصر…');
+      const long = isShort(u) ? await expandShort(u) : null;
+      if(!long || isList(long)) return {err:'token'};
+      u = long;
+    }
+  }
   const list = parseGoogle(u);
   if(!list || !list.length) return null;
   return fillCoords(list, n=>onStep && onStep('أدوّر على '+n+'…'));
@@ -687,9 +742,20 @@ $('#pasteGo').onclick = async ()=>{
   const step = m => pv.innerHTML = `<p class="hint">${esc(m)}</p>`;
   let res; try{ res = await readGoogle(v, step); }catch(e){ res = null; }
   btn.disabled = false;
-  if(res && res.err==='short'){ pv.innerHTML = '<p class="hint" style="color:var(--bad)">ما قدرت أفتح الرابط المختصر الحين. افتحه في سفاري وانسخ الرابط الطويل اللي يطلع في الأعلى، والصقه هنا.</p>'; return; }
+  const ERR = {
+    token:'الروابط المختصرة وقوائم الأماكن تحتاج إعداد مرة وحدة.',
+    badtoken:'GitHub رفض المفتاح. تأكد من صلاحيات Actions و Contents، أو سوّ مفتاح جديد.',
+    net:'ما قدرت أوصل لـ GitHub. تأكد من النت وجرب مرة ثانية.',
+    timeout:'GitHub تأخر. جرب مرة ثانية بعد شوي.',
+    gfail:'GitHub فتح الرابط بس ما لقى فيه أماكن.',
+  };
+  if(res && res.err){
+    pv.innerHTML = `<p class="hint" style="color:var(--bad)">${ERR[res.err]||ERR.gfail}</p>` + (['token','badtoken'].includes(res.err) ? '<button class="btn main" id="ghGo" style="width:100%">إعداد قراءة الروابط</button>' : '');
+    if($('#ghGo')) $('#ghGo').onclick = openGh;
+    return;
+  }
   if(!res){ pv.innerHTML = '<p class="hint" style="color:var(--bad)">ما لقيت مواقع في هذا الرابط. تأكد إنه رابط من قوقل ماب.</p>'; return; }
-  gFound = res.filter(x=>x.lat!=null);
+  gFound = res.filter(x=>x.lat!=null); gFound.listName = res.listName || null;
   const miss = res.length - gFound.length;
   pv.innerHTML = `<div class="gl">${res.map((x,i)=>`<div><span class="badge">${i+1}</span>${esc(x.name || (x.lat!=null ? x.lat.toFixed(4)+', '+x.lng.toFixed(4) : ''))}${x.lat==null?'<small>ما لقيته</small>':''}</div>`).join('')}</div>`
     + (gFound.length ? `<p class="hint">${gFound.length===1?'لقيت مكان واحد':'لقيت '+gFound.length+' وقفات'}${miss?'، و'+miss+' ما قدرت أحدد مكانها':''}.</p>
@@ -701,13 +767,25 @@ $('#pasteGo').onclick = async ()=>{
 function importFound(asNew){
   if(!gFound || !gFound.length) return;
   if(asNew){
-    const t = {id:uid(), name:(gFound[gFound.length-1].name ? 'إلى '+gFound[gFound.length-1].name : 'رحلة من قوقل'), stops:[], loop:false};
+    const t = {id:uid(), name: gFound.listName || (gFound[gFound.length-1].name ? 'إلى '+gFound[gFound.length-1].name : 'رحلة من قوقل'), stops:[], loop:false};
     trips.push(t); curId = t.id; selId = null; routeData = null; routeKey = '';
   }
-  gFound.forEach(x=>addStop(x.lat, x.lng, x.name));
+  gFound.forEach(x=>addStop(x.lat, x.lng, x.name, x.note||''));
   toast(gFound.length===1 ? 'انضافت الوقفة' : 'انضافت '+gFound.length+' وقفات');
   gFound = null; $('#pasteIn').value=''; $('#gPrev').innerHTML=''; closeOv(); fitAll();
 }
+function openGh(){ $('#ghTok').value = ghTok(); $('#ghMsg').textContent = ghTok() ? 'فيه مفتاح محفوظ.' : ''; openOv('ghOv'); }
+$('#ghOpen').onclick = e=>{ e.preventDefault(); openGh(); };
+$('#ghSave').onclick = async ()=>{
+  const v = $('#ghTok').value.trim(); if(!v) return;
+  $('#ghMsg').textContent = 'أتأكد من المفتاح…';
+  try{
+    const r = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/resolve.yml`, {headers:{'Authorization':'Bearer '+v,'Accept':'application/vnd.github+json'}});
+    if(!r.ok){ $('#ghMsg').textContent = 'المفتاح ما يشتغل ('+r.status+'). تأكد إنك اخترت abu-barrak وصلاحية Actions.'; return; }
+  }catch(e){ $('#ghMsg').textContent = 'ما قدرت أتأكد، تأكد من النت.'; return; }
+  ls.set('ghtok', v); $('#ghMsg').textContent = ''; toast('انحفظ المفتاح، الحين الصق رابطك'); openOv('addOv'); $('#addTabs [data-t="paste"]').click();
+};
+$('#ghDel').onclick = ()=>{ ls.set('ghtok',''); $('#ghTok').value=''; $('#ghMsg').textContent='انحذف المفتاح.'; };
 $('#gBtn').onclick = ()=>{ openOv('addOv'); $('#addTabs [data-t="paste"]').click(); };
 $('#bulkGo').onclick = async ()=>{
   const lines = $('#bulkIn').value.split('\n').map(x=>x.trim()).filter(Boolean);
