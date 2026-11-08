@@ -120,6 +120,8 @@
   #sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;height:calc(100vh - var(--top) - 4px);height:calc(100dvh - var(--top) - 4px);background:var(--sheet);border-top:1px solid var(--gb);border-radius:28px 28px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);transform:translateY(calc(100% - var(--peek)));transition:transform .34s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;max-width:640px;margin:0 auto}
   #sheet.full{transform:translateY(0)}
   #sheet.mini{transform:translateY(calc(100% - var(--mini,150px)))}
+  #sheet.hid{transform:translateY(calc(100% - 28px))}
+  #sheet.hid #sheetTop>*:not(.hwrap){visibility:hidden}
   #sheet.drag{transition:none}
   #sheetTop{padding:2px 14px 8px;touch-action:none;cursor:grab}
   .handle{cursor:pointer}
@@ -131,11 +133,11 @@
   .ph .pl{flex:1;min-width:0}
   .pcity{display:flex;align-items:center;gap:5px;font-size:13.5px;font-weight:600;color:var(--mut)}
   .pcity svg{width:12px;height:12px;fill:var(--acc)}
-  .ptemp{font-size:40px;font-weight:200;line-height:1;letter-spacing:-1.5px;margin-top:0}
+  .ptemp{font-size:36px;font-weight:200;line-height:1;letter-spacing:-1.5px;margin-top:0}
   .ptemp sup{font-size:.45em;font-weight:300;vertical-align:top;position:relative;top:.15em;color:var(--acc)}
   .pverd{font-size:12.5px;color:var(--tx);opacity:.92;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pill2{flex:none;width:70px;text-align:center}
-  .illo{width:70px;height:54px;filter:drop-shadow(0 6px 18px var(--glow))}
+  .pill2{flex:none;width:62px;text-align:center}
+  .illo{width:60px;height:46px;filter:drop-shadow(0 6px 18px var(--glow))}
   .hl{font-size:11.5px;color:var(--mut);margin-top:-4px}
   .hl b{color:var(--tx);font-weight:600}
   .pchips{display:flex;gap:5px;margin-top:7px;overflow-x:auto;scrollbar-width:none}
@@ -1135,7 +1137,7 @@ $('menu').onclick = e => {
     if(t==='city') flyToCity(true);
   }
 };
-const mapPad = () => ({top:20, bottom:Math.max(20,(sheetSt==='mini'?MN:PK)-90), left:60, right:60});
+const mapPad = () => ({top:20, bottom:Math.max(20,visH(sheetSt)-90), left:60, right:60});
 
 // ---------- سجل الرصد: 6 ساعات ----------
 // الرادار المجاني يعطي آخر ساعتين بس، فالـ6 ساعات يكمّلها مطر القمر الصناعي (صورة كل 30 د)
@@ -1464,7 +1466,8 @@ $('tShot').onclick = async () => {
 
 // ---------- اللوحة السفلية: 3 وضعيات (مصغّرة / متوسطة / كاملة) تسحبها بإصبعك ----------
 const sheet = $('sheet');
-let sheetSt = ['mini','mid'].includes(ls.get('sheetSt','mid')) ? ls.get('sheetSt','mid') : 'mid';
+let sheetSt = ['hid','mini','mid'].includes(ls.get('sheetSt','mid')) ? ls.get('sheetSt','mid') : 'mid';
+const HID = 28;   // المخفية: يبان المقبض بس
 const ROOT = document.documentElement.style;
 let PK = 280, MN = 150;
 // نقيس ارتفاع الملخص في الوضعين (بدون حركة)
@@ -1476,27 +1479,28 @@ function setPeek(){
   MN = $('sheetTop').offsetHeight + 2;
   sheet.className = cls;
   ROOT.setProperty('--peek', PK+'px'); ROOT.setProperty('--mini', MN+'px');
-  ROOT.setProperty('--vis', (sheetSt==='mini'?MN:PK)+'px');
+  ROOT.setProperty('--vis', visH(sheetSt)+'px');
   requestAnimationFrame(placeBubble);
 }
+const visH = st => st==='hid' ? HID : st==='mini' ? MN : PK;
 function setSheet(st){
   sheetSt = st;
-  sheet.classList.toggle('full', st==='full'); sheet.classList.toggle('mini', st==='mini');
+  sheet.classList.toggle('full', st==='full'); sheet.classList.toggle('mini', st==='mini'||st==='hid'); sheet.classList.toggle('hid', st==='hid');
   if(st!=='full'){ ls.set('sheetSt', st); if(pane!=='now') setPane('now'); }
-  ROOT.setProperty('--vis', (st==='mini'?MN:PK)+'px');
+  ROOT.setProperty('--vis', visH(st)+'px');
   requestAnimationFrame(placeBubble);
 }
 function openSheet(full){ setSheet(full ? 'full' : 'mid'); }
 (function(){
   const top = $('sheetTop'), body = $('sheetBody');
   const H = () => sheet.offsetHeight;
-  const posOf = st => st==='full' ? 0 : st==='mid' ? H()-PK : H()-MN;
+  const posOf = st => st==='full' ? 0 : H()-visH(st);
   let y0=null, base=0, moved=false, t0=0, lastY=0, lastT=0, vel=0;
   function begin(y){ y0=y; t0=lastT=Date.now(); lastY=y; vel=0; moved=false; base=posOf(sheetSt); sheet.classList.add('drag'); }
   function move(y){
     const dy = y - y0; if(Math.abs(dy)>5) moved=true;
     const now = Date.now(); if(now>lastT){ vel = (y-lastY)/(now-lastT); lastY=y; lastT=now; }
-    let p = base+dy; const mx = H()-MN;
+    let p = base+dy; const mx = H()-HID;
     if(p<0) p = p/3; if(p>mx) p = mx + (p-mx)/3;   // مقاومة عند الأطراف
     sheet.style.transform = `translateY(${p}px)`;
     return p;
@@ -1504,10 +1508,10 @@ function openSheet(full){ setSheet(full ? 'full' : 'mid'); }
   function finish(y){
     const p = base + (y - y0);
     sheet.classList.remove('drag'); sheet.style.transform='';
-    const order = ['full','mid','mini'], k = order.indexOf(sheetSt);
+    const order = ['full','mid','mini','hid'], k = order.indexOf(sheetSt);
     let st;
-    if(!moved) st = sheetSt==='full' ? 'mid' : sheetSt==='mid' ? 'full' : 'mid';   // لمسة: تكبير/تصغير
-    else if(Math.abs(vel) > 0.6) st = order[Math.max(0, Math.min(2, k + (vel>0?1:-1) * (Math.abs(vel)>2.2?2:1)))];
+    if(!moved) st = sheetSt==='full' ? 'mid' : sheetSt==='mid' ? 'full' : sheetSt==='hid' ? 'mini' : 'mid';   // لمسة: تكبير/تصغير
+    else if(Math.abs(vel) > 0.6) st = order[Math.max(0, Math.min(3, k + (vel>0?1:-1) * (Math.abs(vel)>2.2?2:1)))];
     else st = order.map(s=>[s, Math.abs(posOf(s)-p)]).sort((a,b)=>a[1]-b[1])[0][0];   // أقرب وضعية
     y0 = null; setSheet(st);
   }
