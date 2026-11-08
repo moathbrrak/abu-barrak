@@ -43,6 +43,45 @@
   .glass{background:var(--glass);border:1px solid var(--gb);box-shadow:0 6px 20px rgba(0,0,0,.35)}
   .sub{color:var(--mut);font-size:12px}
   .spin{display:inline-block;animation:sp 1s linear infinite}
+
+  /* ================= واجهة «الأفق» ================= */
+  :root{--hz-ink:#0B1018;--hz-teal:#3FD1C2;--hz-amber:#FFB547;--hz-tx:#EEF2F6;--hz-mut:#8FA2B4;--hz-line:#2A3846}
+  body.hz:not(.hz-open) .hdr, body.hz:not(.hz-open) #tabs, body.hz #lyr, body.hz:not(.hz-open) .vcol.l, body.hz:not(.hz-open) #sheet{display:none!important}
+  body.hz-open #hz{display:none}
+  #hz{display:none}
+  body.hz #hz{display:block}
+  #hzTop{position:fixed;top:calc(env(safe-area-inset-top) + 14px);right:20px;left:20px;z-index:20;display:flex;flex-direction:column;gap:6px;pointer-events:none;text-shadow:0 1px 12px rgba(11,16,24,.9)}
+  #hzTop > *{pointer-events:auto}
+  #hzLive{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--hz-mut)}
+  #hzLive i{width:8px;height:8px;border-radius:4px;background:var(--hz-teal);box-shadow:0 0 0 0 rgba(63,209,194,.6);animation:hzPulse 2.4s var(--ease-out) infinite}
+  @keyframes hzPulse{0%{box-shadow:0 0 0 0 rgba(63,209,194,.55)}70%,100%{box-shadow:0 0 0 8px rgba(63,209,194,0)}}
+  #hzH{margin:0;font-family:"Reem Kufi","Readex Pro",sans-serif;font-weight:700;font-size:30px;line-height:1.3;color:#F4F7FA;max-width:350px;text-wrap:balance;transition:opacity .25s ease}
+  #hzP{margin:0;font-size:15px;line-height:1.6;color:#C3CFDA;max-width:330px}
+  #hzActs{display:flex;gap:8px;margin-top:8px;align-items:center}
+  .hzb{height:44px;min-width:44px;border-radius:22px;border:1px solid var(--hz-line);background:rgba(11,16,24,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--hz-tx);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:inherit;font-size:15px;transition:transform 160ms var(--ease-out),background-color .2s ease}
+  .hzb:active{transform:scale(.97)}
+  .hzb svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .hzb.go{background:var(--hz-teal);border-color:transparent;color:#062521;font-weight:600;padding:0 18px}
+  .hzb.go[hidden]{display:none}
+  .hzb.ic{padding:0;width:44px}
+  #hzLayers{position:fixed;right:16px;left:16px;bottom:calc(env(safe-area-inset-bottom) + 200px);z-index:20;display:flex;gap:6px;flex-wrap:wrap}
+  #hzLayers button{height:34px;padding:0 13px;border-radius:17px;border:1px solid var(--hz-line);background:rgba(11,16,24,.75);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#B9C6D2;font:inherit;font-size:13px;transition:transform 160ms var(--ease-out),background-color .2s ease,color .2s ease}
+  #hzLayers button.on{background:var(--hz-tx);color:var(--hz-ink);border-color:transparent;font-weight:600}
+  #hzLayers button:active{transform:scale(.97)}
+  #hzBot{position:fixed;left:0;right:0;bottom:0;z-index:19;padding:34px 20px calc(env(safe-area-inset-bottom) + 18px);background:linear-gradient(to top,var(--hz-ink) 72%,rgba(11,16,24,0));display:flex;flex-direction:column;gap:10px;cursor:pointer}
+  #hzRow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  #hzCity{font-family:"Reem Kufi","Readex Pro",sans-serif;font-size:21px;color:#F4F7FA;white-space:nowrap}
+  #hzCap{font-size:12.5px;color:var(--hz-mut);text-align:left}
+  #hzBars{position:relative;height:60px;display:flex;align-items:flex-end;gap:3px}
+  #hzBars span{flex:1;border-radius:3px;background:#1E2A36;min-height:4px;transition:height .35s var(--ease-out),background-color .3s ease}
+  #hzBars span.r{background:var(--hz-teal)} #hzBars span.s{background:var(--hz-amber)}
+  #hzNow{position:absolute;top:-6px;bottom:-6px;width:2px;background:#F4F7FA;border-radius:1px}
+  #hzHours{display:flex;justify-content:space-between;font-size:12px;color:var(--hz-mut);font-variant-numeric:tabular-nums}
+  #hzHours b{color:#F4F7FA;font-weight:600}
+  #hzMore{display:flex;justify-content:center;margin-top:2px}
+  #hzMore span{width:38px;height:4px;border-radius:2px;background:#3A4A5A}
+  #hzBack{position:fixed;z-index:40;left:16px;bottom:calc(env(safe-area-inset-bottom) + 16px);display:none}
+  body.hz-open #hzBack{display:inline-flex}
   @keyframes sp{to{transform:rotate(360deg)}}
   :root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1)}
   /* كل شي ينضغط يرد عليك بلمسة: يصغر شوي وقت الضغط ويرجع بسرعة */
@@ -359,6 +398,29 @@
 <body>
 <div id="map"></div>
 
+
+<!-- واجهة «الأفق»: الخريطة هي الواجهة -->
+<div id="hz">
+  <div id="hzTop">
+    <div id="hzLive"><i></i><span id="hzLiveT">أجيب آخر رصد…</span></div>
+    <h1 id="hzH">أشوف السماء…</h1>
+    <p id="hzP"></p>
+    <div id="hzActs">
+      <button class="hzb go" id="hzGo" hidden><svg viewBox="0 0 24 24"><path d="M3 11 21 3l-8 18-2-8z"/></svg><span>طارده</span></button>
+      <button class="hzb ic" id="hzLoc" aria-label="موقعي"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+      <button class="hzb ic" id="hzSearch" aria-label="ابحث عن مكان"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="hzb ic" id="hzMenu" aria-label="المزيد"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
+    </div>
+  </div>
+  <div id="hzLayers"></div>
+  <div id="hzBot" role="button" tabindex="0" aria-label="التفاصيل والتوقعات">
+    <div id="hzRow"><span id="hzCity">—</span><span id="hzCap">المطر بالساعة: آخر ساعتين والجاي ١٢</span></div>
+    <div id="hzBars"></div>
+    <div id="hzHours"></div>
+    <div id="hzMore"><span></span></div>
+  </div>
+</div>
+<button class="hzb" id="hzBack"><svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg><span>رجوع للخريطة</span></button>
 <!-- الشريط العلوي -->
 <div class="hdr glass">
   <img class="avatar" src="apple-touch-icon.png" alt="">
@@ -722,6 +784,7 @@ function updateBadge(){
 // ================= العرض =================
 function render(d, stale){
   lastData = d;
+  setTimeout(()=>{ try{ HZ.bars(); HZ.scan(); }catch(e){} }, 0);
   { const ck = cities[cur].lat+','+cities[cur].lon; if(render.ck!==ck){ $('alLive').innerHTML=''; render.ck=ck; } }
   let h = d.models.hourly; const b = d.best || {}, c = cities[cur];
   const now = Date.now();
@@ -1258,7 +1321,7 @@ function renderLyr(){
   $('lyr').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button class="vbtn ${lyrOn[k]?'on':''}" data-k="${k}" title="${v.name}">${IC[k]}<span>${v.name}</span></button>`).join('');
   renderMenu();
 }
-function toggleLyr(k){ lyrOn[k] = !lyrOn[k]; ls.set('lyrOn', lyrOn); renderLyr(); if(map) applyLyr(); }
+function toggleLyr(k){ lyrOn[k] = !lyrOn[k]; ls.set('lyrOn', lyrOn); renderLyr(); if(map) applyLyr(); try{ HZ.layers(); }catch(e){} }
 $('lyr').onclick = e => { const b = e.target.closest('button'); if(b) toggleLyr(b.dataset.k); };
 const vis = (id,on) => { if(map.getLayer(id)) map.setLayoutProperty(id,'visibility', on?'visible':'none'); };
 function applyLyr(){
@@ -2268,7 +2331,153 @@ const EI = (() => {
   fix(document.body);
   return {svg, fix};
 })();
+// =====================================================================
+//  واجهة «الأفق»: الخريطة كاملة، جملة وحدة تقول الأهم، وخط زمني للمطر
+// =====================================================================
+const HZ = (() => {
+  const R = 6371, rad = Math.PI/180;
+  const dist = (a,o,b,p) => { const x=Math.sin((b-a)*rad/2)**2+Math.cos(a*rad)*Math.cos(b*rad)*Math.sin((p-o)*rad/2)**2; return 2*R*Math.asin(Math.sqrt(x)); };
+  const brg = (a,o,b,p) => { const y=Math.sin((p-o)*rad)*Math.cos(b*rad), x=Math.cos(a*rad)*Math.sin(b*rad)-Math.sin(a*rad)*Math.cos(b*rad)*Math.cos((p-o)*rad); return (Math.atan2(y,x)/rad+360)%360; };
+  const DIRK = ['شمالك','شمال شرقك','شرقك','جنوب شرقك','جنوبك','جنوب غربك','غربك','شمال غربك'];
+  const AR = n => String(n).replace(/\d/g, d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+  let target = null, scanning = false, here = null, hereAt = 0;
+  const el = id => document.getElementById(id);
+
+  // موقعك (لو سمحت) وإلا المدينة المختارة
+  function where(){
+    return new Promise(ok=>{
+      const c = cities[cur]; const fb = {lat:c.lat, lon:c.lon, name:c.name, me:false};
+      if(here && Date.now()-hereAt < 10*60e3) return ok(here);
+      if(!navigator.geolocation || !navigator.permissions) return ok(fb);
+      navigator.permissions.query({name:'geolocation'}).then(st=>{
+        if(st.state!=='granted') return ok(fb);
+        navigator.geolocation.getCurrentPosition(p=>{ here = {lat:p.coords.latitude, lon:p.coords.longitude, name:'موقعك', me:true}; hereAt = Date.now(); ok(here); }, ()=>ok(fb), {timeout:5000, maximumAge:600000});
+      }).catch(()=>ok(fb));
+    });
+  }
+  const img = u => new Promise((ok,no)=>{ const i = new Image(); i.crossOrigin = 'anonymous'; i.onload = ()=>ok(i); i.onerror = no; i.src = u; });
+  // نمسح صورة الرادار حولك ونلقى أقرب بكسل فيه مطر
+  async function scanRadar(lat, lon){
+    if(!rvHost || !frames.length) return null;
+    const path = frames.at(-1).path, z = 6, n = 2**z;
+    const tx = (lon+180)/360*n, ty = (1-Math.log(Math.tan(lat*rad)+1/Math.cos(lat*rad))/Math.PI)/2*n;
+    const cx = Math.floor(tx), cy = Math.floor(ty);
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d', {willReadFrequently:true});
+    let best = null;
+    for(let dx=-1; dx<=1; dx++) for(let dy=-1; dy<=1; dy++){
+      const x = cx+dx, y = cy+dy; if(y<0||y>=n) continue;
+      let im; try{ im = await img(`${rvHost}${path}/256/${z}/${(x+n)%n}/${y}/2/1_0.png`); }catch(e){ continue; }
+      g.clearRect(0,0,256,256); g.drawImage(im,0,0);
+      let d; try{ d = g.getImageData(0,0,256,256).data; }catch(e){ return null; }
+      for(let py=0; py<256; py+=2) for(let px=0; px<256; px+=2){
+        const i = (py*256+px)*4; if(d[i+3] < 60) continue;
+        const plon = (x+px/256)/n*360-180, plat = Math.atan(Math.sinh(Math.PI*(1-2*(y+py/256)/n)))/rad;
+        const km = dist(lat,lon,plat,plon);
+        if(!best || km < best.km){
+          const r=d[i], gg=d[i+1], b=d[i+2], mx=Math.max(r,gg,b), mn=Math.min(r,gg,b);
+          let h = 0; if(mx!==mn){ if(mx===r) h=60*((gg-b)/(mx-mn)%6); else if(mx===gg) h=60*((b-r)/(mx-mn)+2); else h=60*((r-gg)/(mx-mn)+4); } h=(h+360)%360;
+          const lvl = (h < 70 || h > 300) ? 3 : (h < 170 ? 2 : 1);
+          best = {lat:plat, lon:plon, km, lvl, src:'الرادار'};
+        }
+      }
+    }
+    return best;
+  }
+  // لو الرادار ما غطّى، نشوف القمر الصناعي (EUMETSAT) حولك
+  async function scanSat(lat, lon){
+    if(!wmsTime.sat) return null;
+    const w = 4.5, S = 200;
+    const u = `${EUM}wms?service=WMS&version=1.3.0&request=GetMap&layers=mtg_fd:h40b&styles=&format=image/png&transparent=true&crs=EPSG:4326&width=${S}&height=${S}&bbox=${lat-w},${lon-w},${lat+w},${lon+w}&time=${wmsTime.sat}`;
+    let im; try{ im = await img(u); }catch(e){ return null; }
+    const cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d', {willReadFrequently:true}); g.drawImage(im,0,0);
+    let d; try{ d = g.getImageData(0,0,S,S).data; }catch(e){ return null; }
+    let best = null;
+    for(let py=0; py<S; py+=2) for(let px=0; px<S; px+=2){
+      const i = (py*S+px)*4; if(d[i+3] < 60) continue;
+      const plat = lat+w - py/S*2*w, plon = lon-w + px/S*2*w, km = dist(lat,lon,plat,plon);
+      if(!best || km < best.km) best = {lat:plat, lon:plon, km, lvl:2, src:'القمر الصناعي'};
+    }
+    return best;
+  }
+  function firstRain(){
+    const d = lastData; if(!d || !d.models || !d.models.hourly) return null;
+    const h = d.models.hourly, now = Date.now();
+    let i0 = h.time.findIndex(t=>new Date(t).getTime() >= now-3600e3); if(i0<0) return null;
+    for(let i=i0; i<Math.min(i0+72, h.time.length); i++){
+      let s=0, k=0; MODELS.forEach(m=>{ const v=(h['precipitation_'+m.id]||[])[i]; if(v!=null){ s+=v; k++; } });
+      if(k && s/k >= RAIN_MM) return h.time[i];
+    }
+    return null;
+  }
+  async function scan(){
+    if(scanning || !document.body.classList.contains('hz')) return; scanning = true;
+    try{
+      const at = await where();
+      let r = await scanRadar(at.lat, at.lon);
+      if(!r || r.km > 350){ const s2 = await scanSat(at.lat, at.lon).catch(()=>null); if(s2 && (!r || s2.km < r.km)) r = s2; }
+      if(frames.length) el('hzLiveT').textContent = 'مباشر، آخر رصد ' + new Date(frames.at(-1).time*1000).toLocaleTimeString('ar-SA',{hour:'numeric',minute:'2-digit'});
+      const go = el('hzGo');
+      const word = r ? (r.lvl===3 ? 'مطر غزير' : r.lvl===2 ? 'مطر' : 'مطر خفيف') : '';
+      if(r && r.km < 6){
+        target = null; go.hidden = true;
+        el('hzH').textContent = 'يمطر عندك الحين';
+        el('hzP').textContent = `${word} فوق ${at.me?'مكانك':at.name} حسب ${r.src}.`;
+      } else if(r && r.km <= 400){
+        target = r; go.hidden = false;
+        const k = Math.round(r.km);
+        el('hzH').textContent = `${word} ${DIRK[Math.round(brg(at.lat,at.lon,r.lat,r.lon)/45)%8]} على بعد ${AR(k)} كم`;
+        el('hzP').textContent = `أقرب مطر ل${at.me?'موقعك':at.name}، حسب ${r.src}.${r.lvl===3?' فيه خلايا قوية، انتبه للبرق والسيول.':''}`;
+      } else {
+        target = null; go.hidden = true;
+        el('hzH').textContent = 'ما فيه مطر قريب';
+        const f = firstRain();
+        el('hzP').textContent = f ? `أول مطر متوقع على ${cities[cur].name} ${fmtH(f)}.` : `الجو مستقر حول ${at.name}، والنماذج ما تتوقع مطر خلال ٣ أيام.`;
+      }
+    }catch(e){} finally{ scanning = false; }
+  }
+  function bars(){
+    const d = lastData, c = cities[cur];
+    const t = d && d.best && d.best.current ? Math.round(d.best.current.temperature_2m) : null;
+    el('hzCity').textContent = c.name + (t!=null ? ' ' + AR(t) + '°' : '');
+    if(!d || !d.models || !d.models.hourly){ el('hzBars').innerHTML=''; return; }
+    const h = d.models.hourly, now = Date.now();
+    let i0 = h.time.findIndex(x=>new Date(x).getTime() > now-3600e3); if(i0<0) i0 = 0;
+    const from = Math.max(0, i0-2), N = 15, vals = [];
+    for(let i=from; i<from+N && i<h.time.length; i++){
+      let s=0,k=0,storm=false; MODELS.forEach(m=>{ const v=(h['precipitation_'+m.id]||[])[i]; const cape=(h['cape_'+m.id]||[])[i]; if(v!=null){ s+=v; k++; if(cape>800 && v>=RAIN_MM) storm=true; } });
+      vals.push({mm: k ? s/k : 0, storm, t:h.time[i]});
+    }
+    const mx = Math.max(1.5, ...vals.map(v=>v.mm));
+    el('hzBars').innerHTML = vals.map(v=>`<span class="${v.mm>=RAIN_MM ? (v.storm?'s':'r') : ''}" style="height:${Math.max(4, v.mm/mx*56)}px" title="${fmtH(v.t)}: ${r1(v.mm)} مم"></span>`).join('') + `<i id="hzNow" style="right:calc(${((i0-from)+0.5)/vals.length*100}% - 1px)"></i>`;
+    const hr = x => new Date(x).toLocaleTimeString('ar-SA',{hour:'numeric'});
+    const pick = [0, i0-from, Math.min(vals.length-1, i0-from+4), Math.min(vals.length-1, i0-from+8), vals.length-1];
+    el('hzHours').innerHTML = pick.map((k,j)=> j===1 ? '<b>الحين</b>' : `<span>${vals[k] ? hr(vals[k].t) : ''}</span>`).join('');
+  }
+  function layers(){
+    el('hzLayers').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button data-k="${k}" class="${lyrOn[k]?'on':''}" aria-pressed="${!!lyrOn[k]}">${v.name}</button>`).join('');
+  }
+  function openDetails(p){ document.body.classList.add('hz-open'); setPane(p||'now'); openSheet(true); }
+  function closeDetails(){ document.body.classList.remove('hz-open'); setSheet('hid'); }
+  function init(){
+    document.body.classList.add('hz');
+    setSheet('hid');
+    layers();
+    el('hzLayers').onclick = e=>{ const b = e.target.closest('button'); if(!b) return; toggleLyr(b.dataset.k); layers(); };
+    el('hzGo').onclick = ()=>{ if(target) openNav(target.lat, target.lon); };
+    el('hzLoc').onclick = ()=>{ const b = el('bLoc'); if(b) b.click(); };
+    el('hzSearch').onclick = ()=>openDetails('pl');
+    el('hzMenu').onclick = e=>{ e.stopPropagation(); el('moreBtn').click(); };
+    el('hzBot').onclick = ()=>openDetails('now');
+    el('hzBot').onkeydown = e=>{ if(e.key==='Enter') openDetails('now'); };
+    el('hzBack').onclick = closeDetails;
+    setInterval(scan, 60e3);
+    setTimeout(scan, 2500);
+  }
+  return {init, scan, bars, layers, openDetails, closeDetails};
+})();
+
 load();
+HZ.init();
 openRadar();
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState!=='visible') return;
