@@ -52,10 +52,11 @@
   .maplibregl-popup-content a.nav{display:inline-block;margin-top:6px;padding:5px 10px;border-radius:10px;background:var(--acc);color:var(--acc-tx);text-decoration:none;font-weight:600}
   .maplibregl-popup-close-button{color:var(--mut);font-size:18px;left:4px;right:auto}
   /* أسماء عربية على الخريطة */
-  .ml{direction:rtl;white-space:nowrap;pointer-events:none;font-family:"IBM Plex Sans Arabic",sans-serif;text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8)}
-  .ml-c{font-size:14px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:1px}
-  .ml-r{font-size:12px;font-weight:600;color:rgba(255,230,200,.55);letter-spacing:.5px}
-  .ml-s{font-size:13px;font-weight:400;color:rgba(170,200,255,.6);letter-spacing:2px}
+  .ml{direction:rtl;white-space:nowrap;pointer-events:none;font-family:"IBM Plex Sans Arabic",sans-serif;text-shadow:0 1px 2px #000,0 0 3px #000;transition:opacity .2s}
+  #map.moving .ml{opacity:0;transition:none}
+  .ml-c{font-size:14px;font-weight:600;color:rgba(255,255,255,.75);letter-spacing:1px}
+  .ml-r{font-size:12px;font-weight:600;color:rgba(255,230,200,.8);letter-spacing:.5px}
+  .ml-s{font-size:13px;font-weight:400;color:rgba(170,210,255,.8);letter-spacing:2px}
   .ml-k,.ml-t{display:flex;align-items:center;gap:4px;color:#fff}
   .ml-k{font-size:13px;font-weight:600}
   .ml-t{font-size:11.5px;font-weight:400;color:rgba(255,255,255,.88)}
@@ -1038,9 +1039,9 @@ const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
 const EOX = 'https://tiles.maps.eox.at/wmts/1.0.0/';
 const eox = (layer, ext='jpg') => `${EOX}${layer}/default/g/{z}/{y}/{x}.${ext}`;
 const BASES = {
-  dark:   {name:'🌑 داكنة', under:[{u:eox('terrain-light_3857'), paint:{'raster-saturation':-1,'raster-brightness-max':.5,'raster-brightness-min':.02,'raster-contrast':.35}}], over:[], max:16, tint:.22, attr:'Terrain © EOX, OSM'},
-  terrain:{name:'⛰️ تضاريس', under:[{u:eox('terrain_3857'), paint:{'raster-saturation':-.2,'raster-brightness-max':.7,'raster-contrast':.15}}], over:[], max:16, tint:.30, attr:'Terrain © EOX, OSM'},
-  sat:    {name:'🛰️ قمر صناعي', under:[{u:eox('s2cloudless-2024_3857')}], over:[{u:eox('overlay_base_bright_3857','png'), minz:8}], max:15, tint:0, labelsMax:8.5, attr:'Sentinel-2 cloudless © EOX'},
+  dark:   {name:'🌑 داكنة', under:[{u:eox('terrain-light_3857'), paint:{'raster-saturation':-1,'raster-brightness-max':.46,'raster-contrast':.6}}], over:[], max:16, tint:.16, attr:'Terrain © EOX, OSM'},
+  terrain:{name:'⛰️ تضاريس', under:[{u:eox('terrain_3857'), paint:{'raster-saturation':.1,'raster-brightness-max':.85,'raster-contrast':.25}}], over:[], max:16, tint:.12, attr:'Terrain © EOX, OSM'},
+  sat:    {name:'🛰️ قمر صناعي', under:[{u:eox('s2cloudless-2024_3857'), paint:{'raster-contrast':.2,'raster-saturation':.15}}], over:[{u:eox('overlay_base_bright_3857','png'), minz:8}], max:15, tint:0, labelsMax:8.5, attr:'Sentinel-2 cloudless © EOX'},
   osm:    {name:'🗺️ تفصيلية', under:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'}], over:[], max:17, tint:0, labelsMax:0, attr:'© OpenStreetMap'},
 };
 let baseKey = null, baseIds = [];
@@ -1318,6 +1319,10 @@ function createMap(c){
     ok();
   }));
   map.on('zoomend', updateLabels);
+  // أثناء السحب والتكبير نخفي الأسماء (تخفيف الرسم) وترجع أول ما توقف
+  const mapEl = map.getContainer();
+  map.on('movestart', () => mapEl.classList.add('moving'));
+  map.on('moveend', () => mapEl.classList.remove('moving'));
   // لمسة = تحريك فقط · ضغط مطوّل (أو زر الفأرة اليمين) = التراكمي · في وضع الملاحظة: لمسة = ملاحظة
   // لمسة عادية على الخريطة = الأيقونات تصير شفافة (لمسة ثانية ترجعها)
   map.on('click', e => {
