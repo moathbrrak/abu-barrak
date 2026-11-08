@@ -14,6 +14,8 @@
 <link rel="icon" href="icon-192.png">
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
+<script src="https://unpkg.com/@protomaps/basemaps@5.7.0/dist/basemaps.js"></script>
 <style>
   @font-face{font-family:"Reem Kufi";src:url(fonts/reemkufi.woff) format("woff");font-weight:400 700;font-display:swap}
   @font-face{font-family:"Readex Pro";src:url(fonts/readex.woff) format("woff");font-weight:160 700;font-display:swap}
@@ -298,6 +300,8 @@
   <div class="stack">
     <button class="btn" id="loopBtn"><svg><use href="#i-loop"/></svg>رجوع للبداية<small id="loopState"></small></button>
     <button class="btn" id="revBtn"><svg><use href="#i-swap"/></svg>اعكس الترتيب</button>
+    <button class="btn" id="offBtn"><svg><use href="#i-save"/></svg>احفظ الخريطة في جوالك<small id="offState"></small></button>
+    <button class="btn" id="offTripBtn"><svg><use href="#i-route"/></svg>احفظ تفاصيل منطقة الرحلة</button>
     <button class="btn" id="expBtn"><svg><use href="#i-save"/></svg>حفظ نسخة من رحلاتي<small>ملف</small></button>
     <button class="btn" id="impBtn"><svg><use href="#i-open"/></svg>استرجاع من ملف</button>
   </div>
@@ -350,19 +354,21 @@ const eox = (l, ext='jpg') => `${EOX}${l}/default/g/{z}/{y}/{x}.${ext}`;
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
 
 const BASES = {
+  offline:{name:'محفوظة (بدون نت)', vector:'light', layers:[], attr:'', thumb:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'%3E%3Crect width='100' height='60' fill='%23ece8df'/%3E%3Cpath d='M0 40 Q30 30 50 38 T100 30' stroke='%23fff' stroke-width='5' fill='none'/%3E%3Cpath d='M20 0 L35 60' stroke='%23f6d48a' stroke-width='3'/%3E%3Ccircle cx='70' cy='18' r='6' fill='%23cfe3c8'/%3E%3C/svg%3E"},
+  offdark:{name:'محفوظة داكنة', vector:'dark', layers:[], attr:'', thumb:"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 60'%3E%3Crect width='100' height='60' fill='%2322262b'/%3E%3Cpath d='M0 40 Q30 30 50 38 T100 30' stroke='%23474d55' stroke-width='5' fill='none'/%3E%3Cpath d='M20 0 L35 60' stroke='%2361666e' stroke-width='3'/%3E%3C/svg%3E"},
   // الصور حتى تقريب 17 في كل مكان، وفوقها طبقة أدق (18-19) تطلع بس في الأماكن اللي لها صور، والباقي يكبّر اللي تحت
   sat:    {name:'قمر صناعي', labels:true, layers:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', max:17}, {u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}?blankTile=false', min:18, max:19}], attr:'Imagery © Esri, Maxar · © OpenStreetMap, OpenFreeMap', thumb:ESRI+'World_Imagery/MapServer/tile/7/56/77'},
   sat2:   {name:'قمر صناعي (بديل)', labels:true, layers:[{u:eox('s2cloudless-2024_3857'), max:15, paint:{'raster-contrast':.15}}], attr:'Sentinel-2 cloudless © EOX, © OSM', thumb:EOX+'s2cloudless-2024_3857/default/g/7/56/77.jpg'},
   osm:    {name:'شوارع', layers:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max:19}], attr:'© OpenStreetMap', thumb:'https://tile.openstreetmap.org/7/77/56.png'},
   terrain:{name:'تضاريس', labels:true, layers:[{u:eox('terrain_3857'), max:16}], attr:'Terrain © EOX, © OSM', thumb:EOX+'terrain_3857/default/g/7/56/77.jpg'},
 };
-let baseKey = ls.get('base2', 'sat');
+let baseKey = ls.get('base3', 'offline');
 const startView = ls.get('view', {c:[39.19,21.54], z:9});
 // يخلي الحروف العربية متصلة وباتجاه صحيح في أسماء الخريطة
 try{ maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', true); }catch(e){}
 const map = new maplibregl.Map({
   container:'map', center:startView.c, zoom:startView.z,
-  style:{version:8, glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':'#1f2a25'}}]},
+  style:{version:8, glyphs:'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf', sprite:'https://protomaps.github.io/basemaps-assets/sprites/v4/light', sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':'#1f2a25'}}]},
   attributionControl:{compact:true}, dragRotate:false, pitchWithRotate:false, maxZoom:19
 });
 map.touchZoomRotate.disableRotation();
@@ -371,6 +377,7 @@ let baseIds = [], tileErr = 0;
 map.on('error', e=>{ if(baseKey==='sat' && e.sourceId==='base0' && ++tileErr===6){ setBase('sat2'); toast('حوّلت لصور القمر البديلة'); } });
 function setBase(k){
   if(!BASES[k]) k='sat'; tileErr = 0;
+  if(BASES[k].vector && !OFF.ready) k = 'sat';
   baseIds.forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); if(map.getSource(id)) map.removeSource(id); });
   baseIds = [];
   const b = BASES[k];
@@ -380,8 +387,66 @@ function setBase(k){
     map.addLayer({id, type:'raster', source:id, minzoom:x.min||0, paint:{'raster-fade-duration':100, ...(x.paint||{})}}, map.getLayer('route-case') ? 'route-case' : undefined);
     baseIds.push(id);
   });
-  baseKey = k; ls.set('base2', k);
+  baseKey = k; ls.set('base3', k);
   setLabels(!!b.labels);
+  offApply(!!b.vector && OFF.ready, b.vector);
+}
+
+// ================= الخريطة المحفوظة (بدون نت) — نفس خريطة «اخايله» =================
+const MAP_HOST = 'https://pub-9acf22c50b914bce87190f776231ad8e.r2.dev';
+const OFF_CACHE = 'akhila-offline-map';
+const OFF = { local:null, remote:null, ready:false };
+async function offInit(){
+  if(OFF.ready || !window.pmtiles) return OFF.ready;
+  try{ const c = await caches.open(OFF_CACHE); const r = await c.match(MAP_HOST+'/ksa-base.pmtiles'); if(r){ const blob = await r.blob(); OFF.local = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob],'ksa-base.pmtiles'))); } }catch(e){}
+  OFF.remote = new pmtiles.PMTiles(MAP_HOST + '/ksa.pmtiles');
+  if(!OFF.local){
+    try{ await Promise.race([OFF.remote.getHeader(), new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')), 7000))]); }
+    catch(e){ OFF.remote = null; return false; }
+  }
+  maplibregl.addProtocol('ksa', async (params) => {
+    const m = params.url.match(/ksa:\/\/(\d+)\/(\d+)\/(\d+)/); if(!m) return {data:new Uint8Array()};
+    const z=+m[1], x=+m[2], y=+m[3]; let t = null;
+    if(OFF.local && z <= 10){ try{ t = await OFF.local.getZxy(z,x,y); }catch(e){} }
+    if(!t && OFF.remote){ try{ t = await OFF.remote.getZxy(z,x,y); }catch(e){} }
+    return { data: t ? new Uint8Array(t.data) : new Uint8Array() };
+  });
+  OFF.ready = true; return true;
+}
+async function offDownload(onProg){
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){}
+  const r = await fetch(MAP_HOST + '/ksa-base.pmtiles', {cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status);
+  const total = +r.headers.get('content-length') || 0, rd = r.body.getReader(), parts = []; let got = 0;
+  for(;;){ const {done, value} = await rd.read(); if(done) break; parts.push(value); got += value.length; onProg && onProg(got, total); }
+  const blob = new Blob(parts);
+  const c = await caches.open(OFF_CACHE); await c.put(MAP_HOST+'/ksa-base.pmtiles', new Response(blob));
+  OFF.local = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob],'ksa-base.pmtiles')));
+  return blob.size;
+}
+// تفاصيل منطقة الرحلة: أعلى تقريب يناسب حجم المنطقة
+async function offTrip(onProg){
+  const st = T().stops; if(!st.length || !OFF.remote) return null;
+  let w=180,e=-180,n=-90,so=90; st.forEach(x=>{ w=Math.min(w,x.lng); e=Math.max(e,x.lng); n=Math.max(n,x.lat); so=Math.min(so,x.lat); });
+  w-=.05; e+=.05; n+=.05; so-=.05;
+  const t2 = (lo,la,z)=>{ const k=2**z, r=la*Math.PI/180; return [Math.floor((lo+180)/360*k), Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*k)]; };
+  let tiles = [];
+  for(let z=11; z<=14; z++){
+    const [x0,y0]=t2(w,n,z), [x1,y1]=t2(e,so,z), add=[];
+    for(let x=x0;x<=x1;x++) for(let y=y0;y<=y1;y++) add.push([z,x,y]);
+    if(tiles.length + add.length > 6000) break; tiles = tiles.concat(add);
+  }
+  let done=0, i=0;
+  const wk = async ()=>{ while(i<tiles.length){ const [z,x,y]=tiles[i++]; try{ await OFF.remote.getZxy(z,x,y); }catch(e){} onProg && onProg(++done, tiles.length); } };
+  await Promise.all([wk(),wk(),wk(),wk(),wk(),wk()]);
+  return {count:tiles.length, maxz: tiles.length ? tiles[tiles.length-1][0] : 10};
+}
+let offIds = [];
+function offApply(on, flavor){
+  offIds.forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); offIds = [];
+  if(!on || !window.basemaps) return;
+  if(!map.getSource('ksa')) map.addSource('ksa', {type:'vector', tiles:['ksa://{z}/{x}/{y}'], minzoom:0, maxzoom:15, attribution:'© OpenStreetMap · Protomaps'});
+  let L = []; try{ L = basemaps.layers('ksa', basemaps.namedFlavor(flavor), {lang:'ar'}); }catch(e){}
+  L.forEach(l=>{ map.addLayer(l, l.type==='symbol' ? undefined : (map.getLayer('route-case') ? 'route-case' : undefined)); offIds.push(l.id); });
 }
 
 // ================= الأسماء بالعربي (طبقة كتابة فوق الصور) =================
@@ -410,15 +475,15 @@ const LABEL_LAYERS = [
     paint:HALO},
   {id:'lb-village', type:'symbol', 'source-layer':'place', minzoom:9,
     filter:['==',['get','class'],'village'],
-    layout:{'text-field':AR,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],9,11,15,15],'text-max-width':8},
+    layout:{'text-field':AR,'text-font':['Noto Sans Medium'],'text-size':['interpolate',['linear'],['zoom'],9,11,15,15],'text-max-width':8},
     paint:HALO},
   {id:'lb-town', type:'symbol', 'source-layer':'place', minzoom:6,
     filter:['==',['get','class'],'town'],
-    layout:{'text-field':AR,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],6,11,14,17],'text-max-width':8},
+    layout:{'text-field':AR,'text-font':['Noto Sans Medium'],'text-size':['interpolate',['linear'],['zoom'],6,11,14,17],'text-max-width':8},
     paint:HALO},
   {id:'lb-city', type:'symbol', 'source-layer':'place', minzoom:3,
     filter:['==',['get','class'],'city'],
-    layout:{'text-field':AR,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],4,12,12,20],'text-max-width':8},
+    layout:{'text-field':AR,'text-font':['Noto Sans Medium'],'text-size':['interpolate',['linear'],['zoom'],4,12,12,20],'text-max-width':8},
     paint:HALO},
 ];
 function setLabels(on){
@@ -443,7 +508,7 @@ function initRoute(){
   map.addLayer({id:'route-straight', type:'line', source:'route', filter:['get','straight'], paint:{'line-color':'#ffffff','line-width':3,'line-dasharray':[2,2]}});
 }
 
-map.on('load', ()=>{ initRoute(); setBase(baseKey); render(); fitAll(false); });
+map.on('load', async ()=>{ initRoute(); await offInit().catch(()=>{}); setBase(baseKey); render(); fitAll(false); });
 map.on('moveend', ()=>{ const c=map.getCenter(); ls.set('view', {c:[+c.lng.toFixed(5), +c.lat.toFixed(5)], z:+map.getZoom().toFixed(2)}); });
 
 // ================= العلامات =================
@@ -950,7 +1015,22 @@ $('#impFile').onchange = async e=>{
 $('#revBtn').onclick = ()=>{ T().stops.reverse(); save(); render(); closeOv(); };
 function loopLabel(){ $('#loopState').textContent = T().loop ? 'مفعّل' : 'مطفّى'; }
 $('#loopBtn').onclick = ()=>{ T().loop = !T().loop; save(); render(); loopLabel(); };
-$('#moreBtn').onclick = ()=>{ loopLabel(); openOv('moreOv'); };
+$('#moreBtn').onclick = ()=>{ loopLabel(); $('#offState').textContent = OFF.local ? 'محفوظة' : '26 ميقا'; openOv('moreOv'); };
+$('#offBtn').onclick = async ()=>{
+  if(!OFF.ready) await offInit().catch(()=>{});
+  if(!window.pmtiles){ toast('تحتاج نت أول مرة'); return; }
+  if(OFF.local){ toast('الخريطة محفوظة وتشتغل بدون نت'); return; }
+  try{ const n = await offDownload((g,t)=>$('#offState').textContent = t ? Math.round(g/t*100)+'%' : (g/1048576).toFixed(1)+' ميقا');
+    $('#offState').textContent = 'محفوظة'; toast('انحفظت الخريطة ('+(n/1048576).toFixed(0)+' ميقا)'); if(!OFF.ready){ await offInit(); setBase('offline'); } }
+  catch(e){ toast('ما قدرت أحمّلها، تأكد من النت'); }
+};
+$('#offTripBtn').onclick = async ()=>{
+  if(!T().stops.length){ toast('الرحلة فاضية'); return; }
+  if(!OFF.remote){ toast('تحتاج نت عشان تحفظ التفاصيل'); return; }
+  closeOv(); toast('أحفظ تفاصيل المنطقة…', 60000);
+  const r = await offTrip((d,n)=>{ if(d%50===0 || d===n) toast(`أحفظ تفاصيل المنطقة… ${d} من ${n}`, 60000); });
+  toast(r ? `انحفظت تفاصيل منطقة الرحلة${r.maxz<14?' (المنطقة كبيرة، فحفظتها بتفاصيل أقل)':''}` : 'ما قدرت أحفظ', 4000);
+};
 
 // ================= نوع الخريطة =================
 $('#baseBtn').onclick = ()=>{
