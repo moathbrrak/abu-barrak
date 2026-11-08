@@ -1422,13 +1422,13 @@ async function openNav(la, lo){
   }catch(e){}
   const far = snap && snap.d > 60;
   const row = (href, t, sub, main) => `<a class="nvb${main?' main':''}" href="${href}" target="_blank" rel="noopener"><span>${t}</span>${sub?`<small>${sub}</small>`:''}</a>`;
-  let h = '';
+  let h = `<button class="nvb main" id="nvIn"><span>🧭 وجّهني من التطبيق</span><small>${far ? 'بالطريق لين أقرب نقطة، وبعدها بالبوصلة '+km(snap.d) : 'تعليمات بالصوت لين توصل'}</small></button>`;
   if(far){
     h += `<p class="nvp">النقطة بعيدة عن الطريق بـ <b>${km(snap.d)}</b>. قوقل ماب ما يوصل إلا للطرق، فأوديك لأقرب طريق لها${snap.name?` (${esc(snap.name)})`:''}، وبعدها تكمل بتطبيق طرق وعرة أو مشي.</p>`;
-    h += row(gmaps(snap.la,snap.lo), '🚗 قوقل ماب لأقرب طريق', `يبعد ${km(snap.d)} عن النقطة`, true);
+    h += row(gmaps(snap.la,snap.lo), '🚗 قوقل ماب لأقرب طريق', `يبعد ${km(snap.d)} عن النقطة`);
     h += row(gmaps(la,lo), 'قوقل ماب للنقطة نفسها', 'ممكن يرفض أو يوديك لمكان ثاني');
   } else {
-    h += row(gmaps(la,lo), '🚗 قوقل ماب', snap ? 'النقطة على طريق' : '', true);
+    h += row(gmaps(la,lo), '🚗 قوقل ماب', snap ? 'النقطة على طريق' : '');
   }
   h += `<div class="nvt">للطرق الوعرة</div>`;
   h += row(`https://osmand.net/map?pin=${la.toFixed(6)},${lo.toFixed(6)}#15/${la.toFixed(6)}/${lo.toFixed(6)}`, '⛰️ OsmAnd', 'يمشي على الدروب الترابية، ويشتغل بدون نت');
@@ -1438,9 +1438,313 @@ async function openNav(la, lo){
   h += row(`https://maps.apple.com/?daddr=${la.toFixed(6)},${lo.toFixed(6)}&dirflg=d`, ' خرائط أبل', '');
   h += `<button class="nvb" id="nvCopy"><span>📋 انسخ الإحداثيات</span><small dir="ltr">${la.toFixed(5)}, ${lo.toFixed(5)}</small></button>`;
   body.innerHTML = h;
+  $('nvIn').onclick = ()=>{ ov.classList.remove('on'); Nav.start(la, lo, far ? snap : null); };
   $('nvCopy').onclick = async ()=>{ try{ await navigator.clipboard.writeText(`${la.toFixed(6)}, ${lo.toFixed(6)}`); $('nvCopy').querySelector('span').textContent='✓ انتسخت'; }catch(e){} };
   $('nvGpx').onclick = ()=>shareGpx(la, lo, snap && far ? snap : null);
 }
+
+// =====================================================================
+//  التوجيه داخل التطبيق: طريق مسفلت بتعليمات صوتية، وبعده بوصلة للبر
+// =====================================================================
+const Nav = (()=>{
+  const R = 6371000, rad = Math.PI/180;
+  const dist = (a,o,b,p) => { const x=Math.sin((b-a)*rad/2)**2+Math.cos(a*rad)*Math.cos(b*rad)*Math.sin((p-o)*rad/2)**2; return 2*R*Math.asin(Math.sqrt(x)); };
+  const brg = (a,o,b,p) => { const y=Math.sin((p-o)*rad)*Math.cos(b*rad), x=Math.cos(a*rad)*Math.sin(b*rad)-Math.sin(a*rad)*Math.cos(b*rad)*Math.cos((p-o)*rad); return (Math.atan2(y,x)/rad+360)%360; };
+  const fmtD = m => m<1000 ? (m<100 ? Math.max(10,Math.round(m/10)*10) : Math.round(m/50)*50)+' م' : (m/1000).toFixed(m<10000?1:0)+' كم';
+  const sayD = m => m<1000 ? (m<100 ? Math.max(10,Math.round(m/10)*10) : Math.round(m/50)*50)+' متر' : (m/1000).toFixed(m<10000?1:0).replace('.0','')+' كيلو';
+  const fmtT = s => { const m=Math.max(1,Math.round(s/60)); return m<60 ? m+' د' : Math.floor(m/60)+' س '+(m%60?m%60+' د':''); };
+  const DIRS = ['شمال','شمال شرق','شرق','جنوب شرق','جنوب','جنوب غرب','غرب','شمال غرب'];
+  const MOD = {'right':'لف يمين','left':'لف يسار','slight right':'خذ يمين خفيف','slight left':'خذ يسار خفيف','sharp right':'لف يمين حاد','sharp left':'لف يسار حاد','straight':'كمّل سيدا','uturn':'ارجع يوتيرن'};
+  const ANG = {'straight':0,'slight right':40,'right':90,'sharp right':135,'uturn':180,'sharp left':-135,'left':-90,'slight left':-40};
+  const ORD = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن'];
+  function instr(st){
+    const m = st.maneuver, mod = m.modifier||'straight', side = /left/.test(mod)?'يسار':'يمين';
+    const on = st.name ? ' على '+st.name : '';
+    switch(m.type){
+      case 'depart': return 'انطلق'+on;
+      case 'arrive': return 'وصلت آخر الطريق';
+      case 'roundabout': case 'rotary': case 'roundabout turn':
+        return m.exit ? 'في الدوار خذ المخرج '+(ORD[m.exit]||m.exit)+on : 'ادخل الدوار'+on;
+      case 'fork': return 'عند التفرع خذ '+(side==='يسار'?'اليسار':'اليمين')+on;
+      case 'on ramp': return 'ادخل المدخل اللي على '+side+on;
+      case 'off ramp': return 'اطلع من المخرج اللي على '+side+on;
+      case 'merge': return 'اندمج '+side+on;
+      case 'continue': case 'new name': return (mod==='straight'?'كمّل سيدا':MOD[mod]||'كمّل')+on;
+      default: return (MOD[mod]||'كمّل')+on;
+    }
+  }
+  const arrowSvg = a => `<svg viewBox="0 0 48 48" style="transform:rotate(${a}deg)"><path d="M24 4 38 22H29v22H19V22H10z" fill="currentColor"/></svg>`;
+  const iconFor = st => { const t=st.maneuver.type; if(/roundabout|rotary/.test(t)) return '<b style="font-size:34px">⟲</b>'; if(t==='arrive') return '<b style="font-size:30px">🏁</b>'; return arrowSvg(ANG[st.maneuver.modifier||'straight']||0); };
+
+  let S = null; // حالة الرحلة
+  const el = id => document.getElementById(id);
+
+  function ui(){
+    if(el('navHud')) return;
+    const st = document.createElement('style');
+    st.textContent = `
+      body.navmode .hdr,body.navmode #tabs,body.navmode #menu,body.navmode #lyr,body.navmode .vcol,body.navmode #sheet,body.navmode #newObs,body.navmode #hint,body.navmode #noteForm{display:none!important}
+      #navHud,#navBar{display:none;position:fixed;left:10px;right:10px;z-index:90;background:var(--sheet);border:1px solid var(--gb);border-radius:20px;box-shadow:0 10px 28px rgba(0,0,0,.5)}
+      body.navmode #navHud,body.navmode #navBar{display:flex}
+      #navHud{top:calc(env(safe-area-inset-top) + 10px);align-items:center;gap:14px;padding:14px 16px}
+      #nhIco{flex:none;width:64px;height:64px;border-radius:16px;background:var(--acc);color:var(--acc-tx);display:grid;place-items:center}
+      #nhIco svg{width:40px;height:40px;transition:transform .4s}
+      #nhD{font-size:30px;font-weight:700;line-height:1.1}
+      #nhT{font-size:16px;line-height:1.5;color:var(--tx);margin-top:2px}
+      #nhGps{font-size:12px;color:var(--mut);margin-top:3px}
+      #navHud.compass{flex-direction:column;text-align:center;gap:6px;padding:18px 16px}
+      #navHud.compass #nhIco{width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,var(--card2),transparent 70%);border:2px solid var(--gb);color:var(--acc)}
+      #navHud.compass #nhIco svg{width:96px;height:96px;transition:transform .25s linear}
+      #navHud.compass #nhD{font-size:40px}
+      #navBar{bottom:calc(env(safe-area-inset-bottom) + 10px);align-items:center;gap:8px;padding:10px 12px}
+      #nbInfo{flex:1;min-width:0}
+      #nbInfo b{font-size:20px} #nbInfo span{display:block;font-size:13px;color:var(--mut)}
+      #navBar button{flex:none;width:46px;height:46px;border-radius:14px;border:1px solid var(--gb);background:var(--card2);color:var(--tx);font-size:19px;font-family:inherit}
+      #nbStop{background:var(--bad)!important;color:#fff!important;border-color:transparent!important;width:auto!important;padding:0 14px;font-size:15px!important;font-weight:600}
+      #nbCenter{display:none}
+      body.navfree #nbCenter{display:block}
+      .nav-me{width:34px;height:34px}
+      .nav-me svg{width:34px;height:34px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+      .nav-dest{width:26px;height:26px;border-radius:50%;background:var(--rain);border:3px solid #fff;box-shadow:0 0 0 6px rgba(95,180,255,.35)}`;
+    document.head.appendChild(st);
+    const hud = document.createElement('div'); hud.id='navHud';
+    hud.innerHTML = '<div id="nhIco"></div><div style="flex:1;min-width:0"><div id="nhD">…</div><div id="nhT">أحدد موقعك…</div><div id="nhGps"></div></div>';
+    const bar = document.createElement('div'); bar.id='navBar';
+    bar.innerHTML = '<div id="nbInfo"><b>…</b><span></span></div><button id="nbCenter" title="رجّع الخريطة علي">◎</button><button id="nbMode" title="بوصلة / طريق">🧭</button><button id="nbMute" title="الصوت">🔊</button><button id="nbStop">إنهاء</button>';
+    document.body.append(hud, bar);
+    el('nbStop').onclick = stop;
+    el('nbMute').onclick = ()=>{ S.mute = !S.mute; el('nbMute').textContent = S.mute?'🔇':'🔊'; if(S.mute) speechSynthesis.cancel(); };
+    el('nbMode').onclick = ()=>{ if(!S) return; S.phase==='road' ? toCompass('يدوي') : toRoad(); };
+    el('nbCenter').onclick = ()=>{ S.follow = true; document.body.classList.remove('navfree'); if(S.pos) follow(S.pos, true); };
+  }
+
+  // ---------- الصوت ----------
+  let voice = null;
+  function pickVoice(){ const v = speechSynthesis.getVoices(); voice = v.find(x=>/^ar[-_]SA/i.test(x.lang)) || v.find(x=>/^ar/i.test(x.lang)) || null; }
+  if('speechSynthesis' in window){ pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+  function say(t){
+    if(!S || S.mute || !('speechSynthesis' in window)) return;
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'ar-SA'; if(voice) u.voice = voice; u.rate = 1;
+    speechSynthesis.cancel(); speechSynthesis.speak(u);
+  }
+
+  // ---------- إبقاء الشاشة شغالة ----------
+  async function lock(){ try{ if('wakeLock' in navigator && S) S.wake = await navigator.wakeLock.request('screen'); }catch(e){} }
+  document.addEventListener('visibilitychange', ()=>{ if(S && document.visibilityState==='visible') lock(); });
+
+  // ---------- البوصلة ----------
+  function onOrient(e){
+    if(!S) return;
+    let h = null;
+    if(typeof e.webkitCompassHeading === 'number') h = e.webkitCompassHeading;
+    else if(e.absolute && typeof e.alpha === 'number') h = (360 - e.alpha) % 360;
+    if(h==null) return;
+    // تعديل حسب وضع الشاشة
+    const so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    S.compass = (h + so + 360) % 360; S.compassAt = Date.now();
+    if(S.phase==='compass') drawCompass();
+  }
+  function askCompass(){
+    try{
+      if(typeof DeviceOrientationEvent!=='undefined' && typeof DeviceOrientationEvent.requestPermission==='function'){
+        DeviceOrientationEvent.requestPermission().then(r=>{ if(r==='granted') window.addEventListener('deviceorientation', onOrient); }).catch(()=>{});
+      } else {
+        window.addEventListener('deviceorientationabsolute', onOrient);
+        window.addEventListener('deviceorientation', onOrient);
+      }
+    }catch(e){}
+  }
+
+  // ---------- طبقات الخريطة ----------
+  function layers(){
+    if(!map.getSource('nav-route')){
+      map.addSource('nav-route', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+      map.addLayer({id:'nav-route-case', type:'line', source:'nav-route', layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#0b2a4a','line-width':12,'line-opacity':.8}});
+      map.addLayer({id:'nav-route', type:'line', source:'nav-route', layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#3b9cff','line-width':7}});
+      map.addSource('nav-line', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+      map.addLayer({id:'nav-line', type:'line', source:'nav-line', paint:{'line-color':'#ffffff','line-width':3,'line-dasharray':[2,2]}});
+    }
+  }
+  const setGeo = (id, coords) => { const s = map.getSource(id); if(s) s.setData({type:'FeatureCollection', features: coords && coords.length>1 ? [{type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:coords}}] : []}); };
+
+  // ---------- المسار ----------
+  async function route(from){
+    const d = S.roadEnd;
+    S.routing = true; el('nhT').textContent = 'أحسب الطريق…';
+    try{
+      const r = await fetch(`https://router.project-osrm.org/route/v1/driving/${from.lo},${from.la};${d.lo},${d.la}?steps=true&geometries=geojson&overview=full&continue_straight=true`);
+      const j = await r.json(); if(j.code!=='Ok') throw new Error(j.code);
+      const rt = j.routes[0], co = rt.geometry.coordinates;
+      const cum = [0]; for(let i=1;i<co.length;i++) cum.push(cum[i-1] + dist(co[i-1][1],co[i-1][0],co[i][1],co[i][0]));
+      const steps = rt.legs[0].steps; let acc = 0;
+      steps.forEach(st=>{ st.at = acc; acc += st.distance; st.said = 0; });
+      // نطابق بداية كل تعليمة مع طول المسار المرسوم
+      const k = cum[cum.length-1] / Math.max(1, acc); steps.forEach(st=>st.at *= k);
+      S.rt = {co, cum, steps, total:cum[cum.length-1], dur:rt.duration, idx:0};
+      S.off = 0; S.lastRoute = Date.now();
+      setGeo('nav-route', co);
+    }catch(e){
+      S.rt = null; el('nhT').textContent = 'ما قدرت أحسب الطريق. حوّلت للبوصلة.';
+      toCompass('خطأ');
+    }
+    S.routing = false;
+  }
+  // نسقط موقعك على المسار: كم مشيت منه، وكم بعيد عنه
+  function project(p){
+    const {co, cum} = S.rt, cosL = Math.cos(p.la*rad);
+    let best = {d:1e12, along:0, i:0};
+    const from = Math.max(0, S.rt.idx-10), to = Math.min(co.length-1, S.rt.idx+400);
+    for(let i=from;i<to;i++){
+      const ax=(co[i][0]-p.lo)*cosL, ay=co[i][1]-p.la, bx=(co[i+1][0]-p.lo)*cosL, by=co[i+1][1]-p.la;
+      const dx=bx-ax, dy=by-ay, L=dx*dx+dy*dy; let t = L ? -(ax*dx+ay*dy)/L : 0; t = Math.max(0,Math.min(1,t));
+      const x=ax+t*dx, y=ay+t*dy, dd=Math.sqrt(x*x+y*y)*R*rad;
+      if(dd < best.d) best = {d:dd, along:cum[i]+(cum[i+1]-cum[i])*t, i};
+    }
+    S.rt.idx = best.i; return best;
+  }
+
+  function roadTick(p){
+    if(!S.rt || S.routing) return;
+    const pr = project(p);
+    // طلعت عن المسار؟
+    const lim = Math.max(45, (p.acc||0)*1.5);
+    if(pr.d > lim){ if(++S.off >= 3 && Date.now()-S.lastRoute > 8000){ say('أعيد حساب الطريق'); S.rt.idx=0; route(p); return; } } else S.off = 0;
+    const left = S.rt.total - pr.along;
+    // وصلت آخر الطريق
+    if(left < 30){
+      if(S.final) toCompass('نهاية'); else arrive();
+      return;
+    }
+    const steps = S.rt.steps;
+    let k = steps.findIndex((st,i)=>i>0 && st.at > pr.along + 3); if(k<0) k = steps.length-1;
+    const st = steps[k], d = st.at - pr.along, txt = instr(st);
+    el('nhIco').innerHTML = iconFor(st);
+    el('nhD').textContent = fmtD(d);
+    el('nhT').textContent = txt;
+    const tl = S.rt.dur * left / S.rt.total;
+    el('nbInfo').innerHTML = `<b>${fmtD(left)}</b><span>${fmtT(tl)} · توصل ${new Date(Date.now()+tl*1000).toLocaleTimeString('ar-SA',{hour:'numeric',minute:'2-digit'})}${S.final?' · وبعدها '+fmtD(S.final.d)+' بر':''}</span>`;
+    // الإعلان الصوتي: أول ما تظهر التعليمة، وقبلها بمسافة، وعندها
+    const sp = p.spd||0, far = Math.max(250, sp*20);
+    if(S.lastStep !== k){ S.lastStep = k; st.said = 0;
+      if(d <= Math.max(35, sp*4)){ say(txt); st.said = 2; }
+      else { say(`بعد ${sayD(d)}، ${txt}`); st.said = d <= far ? 1 : 0; } }
+    else if(st.said < 1 && d <= far && d > 60){ st.said = 1; say(`بعد ${sayD(d)}، ${txt}`); }
+    else if(st.said < 2 && d <= Math.max(35, sp*4)){ st.said = 2; say(txt); }
+  }
+
+  // ---------- البوصلة للبر ----------
+  function toCompass(why){
+    if(!S) return;
+    S.phase = 'compass'; el('navHud').classList.add('compass'); el('nbMode').textContent = '🛣️';
+    setGeo('nav-route', null);
+    if(why==='نهاية') say(`وصلت آخر الطريق. باقي ${sayD(S.final ? dist(S.pos.la,S.pos.lo,S.tgt.la,S.tgt.lo) : 0)} للنقطة، تابع السهم`);
+    else if(why==='يدوي') say('وضع البوصلة. تابع السهم');
+    S.cSaid = 1e9;
+    el('nhIco').innerHTML = arrowSvg(0);
+    if(S.pos) compassTick(S.pos);
+  }
+  function toRoad(){
+    if(!S) return;
+    S.phase = 'road'; el('navHud').classList.remove('compass'); el('nbMode').textContent = '🧭';
+    setGeo('nav-line', null); S.lastStep = -1;
+    if(S.pos) route(S.pos);
+  }
+  function heading(){
+    // البوصلة إذا شغالة، وإلا اتجاه حركتك من الـGPS
+    if(S.compass!=null && Date.now()-S.compassAt < 3000) return S.compass;
+    if(S.pos && S.pos.hdg!=null && (S.pos.spd||0) > 1.5) return S.pos.hdg;
+    return null;
+  }
+  function drawCompass(){
+    if(!S || !S.pos) return;
+    const b = brg(S.pos.la,S.pos.lo,S.tgt.la,S.tgt.lo), h = heading();
+    const svg = el('nhIco').querySelector('svg'); if(!svg) return;
+    // نخلي الدوران أقصر طريق عشان السهم ما يلف لفة كاملة
+    const target = h==null ? b - (map.getBearing()||0) : b - h;
+    let cur = S.arrowA || 0, diff = ((target - cur) % 360 + 540) % 360 - 180;
+    S.arrowA = cur + diff; svg.style.transform = `rotate(${S.arrowA}deg)`;
+    const rel = ((b - (h==null?0:h)) + 360) % 360;
+    el('nhT').textContent = h==null ? `الاتجاه ${DIRS[Math.round(b/45)%8]} (الشمال فوق في الخريطة)` : (rel<20||rel>340 ? 'قدّامك' : rel<180 ? 'على يمينك' : 'على يسارك') + ' · ' + DIRS[Math.round(b/45)%8];
+  }
+  function compassTick(p){
+    const d = dist(p.la,p.lo,S.tgt.la,S.tgt.lo);
+    el('nhD').textContent = fmtD(d);
+    el('nhGps').textContent = p.acc ? `دقة الـGPS: ±${Math.round(p.acc)} م` : '';
+    el('nbInfo').innerHTML = `<b>${fmtD(d)}</b><span>خط مستقيم للنقطة${(p.spd||0)>1?' · '+fmtT(d/p.spd):''}</span>`;
+    setGeo('nav-line', [[p.lo,p.la],[S.tgt.lo,S.tgt.la]]);
+    drawCompass();
+    if(d < Math.max(20, (p.acc||0))){ arrive(); return; }
+    for(const t of [2000,1000,500,200,100,50]){ if(d <= t && S.cSaid > t){ S.cSaid = t; say(`باقي ${sayD(t)}`); break; } }
+  }
+
+  function arrive(){
+    say('وصلت نقطة المطر');
+    el('navHud').classList.remove('compass');
+    el('nhIco').innerHTML = '<b style="font-size:34px">🌧️</b>'; el('nhD').textContent = 'وصلت'; el('nhT').textContent = 'هذي نقطة المطر'; el('nhGps').textContent='';
+    if(S.watch!=null) navigator.geolocation.clearWatch(S.watch); S.watch = null;
+    setGeo('nav-line', null); setGeo('nav-route', null);
+  }
+
+  // ---------- الموقع ----------
+  function follow(p, now){
+    if(!S.follow) return;
+    const sp = p.spd||0, z = sp > 22 ? 14.2 : sp > 12 ? 15 : 16;
+    const b = S.phase==='road' && p.hdg!=null && sp > 2 ? p.hdg : map.getBearing();
+    const top = el('navHud').offsetHeight + 20, bot = el('navBar').offsetHeight + 120;
+    map.easeTo({center:[p.lo,p.la], zoom:S.phase==='compass' ? Math.min(map.getZoom(), 15) : z, bearing:b, padding:{top, bottom:bot, left:30, right:30}, duration: now?600:950, easing:t=>t});
+  }
+  function onPos(g){
+    if(!S) return;
+    const c = g.coords, p = {la:c.latitude, lo:c.longitude, acc:c.accuracy, spd:c.speed, hdg: (c.heading!=null && !isNaN(c.heading)) ? c.heading : null};
+    // لو الجهاز ما عطى اتجاه، نحسبه من آخر موقعين
+    if(p.hdg==null && S.pos && dist(S.pos.la,S.pos.lo,p.la,p.lo) > 8) p.hdg = brg(S.pos.la,S.pos.lo,p.la,p.lo);
+    if(p.spd==null && S.pos && S.posT) p.spd = dist(S.pos.la,S.pos.lo,p.la,p.lo) / Math.max(.5,(g.timestamp-S.posT)/1000);
+    const first = !S.pos; S.pos = p; S.posT = g.timestamp;
+    S.me.setLngLat([p.lo,p.la]); if(p.hdg!=null) S.me.setRotation(p.hdg);
+    if(first){
+      if(S.phase==='road') route(p).then(()=>S && S.pos && roadTick(S.pos)); else compassTick(p);
+      follow(p, true); return;
+    }
+    if(S.phase==='road') roadTick(p); else compassTick(p);
+    follow(p);
+  }
+
+  async function start(la, lo, snap){
+    if(!navigator.geolocation){ alert('الجهاز ما يدعم تحديد الموقع'); return; }
+    if(S) stop();
+    askCompass();
+    // فتح الصوت لازم يكون من ضغطة المستخدم (iOS)
+    if('speechSynthesis' in window){ const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); }
+    await mapReady; ui(); layers();
+    S = {tgt:{la,lo}, final: snap ? {d:snap.d} : null, roadEnd: snap ? {la:snap.la, lo:snap.lo} : {la,lo}, phase:'road', follow:true, mute:false, lastStep:-1, off:0};
+    const me = document.createElement('div'); me.className='nav-me';
+    me.innerHTML = '<svg viewBox="0 0 40 40"><path d="M20 3 34 35 20 27 6 35z" fill="#3b9cff" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg>';
+    S.me = new maplibregl.Marker({element:me, rotationAlignment:'map'}).setLngLat([lo,la]).addTo(map);
+    const dd = document.createElement('div'); dd.className='nav-dest';
+    S.dest = new maplibregl.Marker({element:dd}).setLngLat([lo,la]).addTo(map);
+    document.body.classList.add('navmode'); document.body.classList.remove('navfree');
+    el('navHud').classList.remove('compass'); el('nbMode').textContent='🧭'; el('nbMute').textContent='🔊';
+    el('nhIco').innerHTML = arrowSvg(0); el('nhD').textContent='…'; el('nhT').textContent='أحدد موقعك…'; el('nhGps').textContent=''; el('nbInfo').innerHTML='<b>…</b><span></span>';
+    S.drag = ()=>{ if(S){ S.follow = false; document.body.classList.add('navfree'); } };
+    map.on('dragstart', S.drag);
+    lock();
+    S.watch = navigator.geolocation.watchPosition(onPos, err=>{ el('nhT').textContent = err.code===1 ? 'لازم تسمح للتطبيق بالموقع' : 'أدوّر على إشارة الـGPS…'; }, {enableHighAccuracy:true, maximumAge:1000, timeout:20000});
+  }
+  function stop(){
+    if(!S) return;
+    if(S.watch!=null) navigator.geolocation.clearWatch(S.watch);
+    try{ S.wake && S.wake.release(); }catch(e){}
+    if('speechSynthesis' in window) speechSynthesis.cancel();
+    S.me.remove(); S.dest.remove(); map.off('dragstart', S.drag);
+    setGeo('nav-route', null); setGeo('nav-line', null);
+    window.removeEventListener('deviceorientation', onOrient); window.removeEventListener('deviceorientationabsolute', onOrient);
+    document.body.classList.remove('navmode','navfree');
+    map.easeTo({bearing:0, padding:{top:0,bottom:0,left:0,right:0}, duration:500});
+    S = null;
+  }
+  return {start, stop, get state(){ return S; }};
+})();
+
 async function shareGpx(la, lo, snap){
   const t = new Date().toISOString();
   const wpt = (a,o,n) => `  <wpt lat="${a.toFixed(6)}" lon="${o.toFixed(6)}"><time>${t}</time><name>${n}</name></wpt>\n`;
