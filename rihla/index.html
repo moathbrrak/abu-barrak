@@ -24,13 +24,16 @@
     --on-sign:rgba(255,255,255,.74); --on-paper:#5C6A64; --bad:#C2372C; --me:#1F6FEB;
     --kufi:"Reem Kufi","Readex Pro",sans-serif; --body:"Readex Pro",-apple-system,"SF Arabic",Tahoma,sans-serif;
     --st:env(safe-area-inset-top); --sb:env(safe-area-inset-bottom);
-    --ease:cubic-bezier(.22,1,.36,1);
+    --ease:cubic-bezier(.23,1,.32,1); --ease-drawer:cubic-bezier(.32,.72,0,1);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:#20302a}
   body{font-family:var(--body);font-size:15px;color:#fff;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-font-smoothing:antialiased}
-  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;transition:transform .15s var(--ease),background-color .2s}
-  button:active{transform:scale(.96)}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;transition:transform 160ms var(--ease),background-color .2s ease,color .2s ease}
+  button:active{transform:scale(.97)}
+  ::selection{background:var(--amber);color:var(--ink)}
+  input,textarea{caret-color:var(--sign)}
+  #sumA,.dist b,.badge,.pin,.coord{font-variant-numeric:tabular-nums}
   button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2.5px solid var(--amber);outline-offset:2px}
   input,textarea{font:inherit;font-size:16px;-webkit-user-select:text;user-select:text}
   svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
@@ -50,11 +53,11 @@
   .rb.on{background:var(--amber)}
 
   /* اللوحة السفلية */
-  #sheet{position:fixed;left:0;right:0;bottom:0;height:88vh;z-index:6;background:var(--sign);border-radius:22px 22px 0 0;box-shadow:0 -12px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;transform:translateY(60vh);transition:transform .42s var(--ease);will-change:transform}
+  #sheet{position:fixed;left:0;right:0;bottom:0;height:88vh;z-index:6;background:var(--sign);border-radius:22px 22px 0 0;box-shadow:0 -12px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;transform:translateY(60vh);transition:transform .4s var(--ease-drawer);will-change:transform}
   #sheet:before{content:"";position:absolute;inset:7px 7px -10px;border:2px solid rgba(255,255,255,.9);border-radius:16px 16px 0 0;pointer-events:none}
   #sheet.drag{transition:none}
-  #sheet.ghost{opacity:.18;transition:transform .42s var(--ease),opacity .2s}
-  #sheet{transition:transform .42s var(--ease),opacity .35s}
+  #sheet.ghost{opacity:.18;transition:transform .4s var(--ease-drawer),opacity .15s ease}
+  #sheet{transition:transform .4s var(--ease-drawer),opacity .25s ease}
   #side,#tripBtn{transition:opacity .35s}
   body.ghosting #side,body.ghosting #tripBtn{opacity:.35}
   #grab{padding:12px 24px 2px;touch-action:none;position:relative}
@@ -117,7 +120,7 @@
   /* النوافذ: ورقة بيضاء */
   .ov{position:fixed;inset:0;z-index:20;background:rgba(10,20,16,0);display:flex;align-items:flex-end;pointer-events:none;transition:background-color .3s}
   .ov.on{background:rgba(10,20,16,.5);pointer-events:auto}
-  .dlg{width:100%;max-height:92vh;overflow-y:auto;background:var(--paper);color:var(--ink);border-radius:22px 22px 0 0;padding:22px 22px calc(var(--sb) + 22px);transform:translateY(105%);transition:transform .4s var(--ease)}
+  .dlg{width:100%;max-height:92vh;overflow-y:auto;background:var(--paper);color:var(--ink);border-radius:22px 22px 0 0;padding:22px 22px calc(var(--sb) + 22px);transform:translateY(105%);transition:transform .38s var(--ease-drawer)}
   .ov.on .dlg{transform:none}
   .dlg h3{font:600 24px/1.3 var(--kufi);margin-bottom:18px;display:flex;align-items:center;gap:10px;color:var(--sign)}
   .dlg h3 .badge{font-size:16px}
@@ -885,7 +888,7 @@ $('#optBtn').onclick = async ()=>{
     const order = st.map((s,i)=>({s, k:j.waypoints[i].waypoint_index})).sort((a,b)=>a.k-b.k).map(x=>x.s);
     const old = st.map(s=>s.id).join();
     T().stops = order; save(); render();
-    toast(old===order.map(s=>s.id).join() ? 'الترتيب الحالي هو الأقصر 👌' : 'تم الترتيب بأقصر طريق');
+    toast(old===order.map(s=>s.id).join() ? 'الترتيب الحالي هو الأقصر' : 'تم الترتيب بأقصر طريق');
   }catch(e){ toast('ما قدرت أرتّب، تأكد من النت'); }
 };
 
