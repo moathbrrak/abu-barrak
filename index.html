@@ -47,15 +47,21 @@
   /* ================= واجهة «الأفق» ================= */
   :root{--hz-ink:#0B1018;--hz-teal:#3FD1C2;--hz-amber:#FFB547;--hz-tx:#EEF2F6;--hz-mut:#8FA2B4;--hz-line:#2A3846}
   body.hz:not(.hz-open) .hdr, body.hz:not(.hz-open) #tabs, body.hz #lyr, body.hz:not(.hz-open) .vcol.l, body.hz:not(.hz-open) #sheet{display:none!important}
-  body.hz-open #hz{display:none}
   #hz{display:none}
   body.hz #hz{display:block}
-  #hzTop{position:fixed;top:calc(env(safe-area-inset-top) + 14px);right:20px;left:20px;z-index:20;display:flex;flex-direction:column;gap:6px;pointer-events:none;text-shadow:0 1px 12px rgba(11,16,24,.9)}
+  body.hz.hz-open #hz{display:none}
+  /* أشياء الواجهة القديمة اللي كانت تطلع فوق الأفق */
+  body.hz:not(.hz-open) #newObs, body.hz:not(.hz-open) #hint, body.hz:not(.hz-open) .ml, body.hz:not(.hz-open) #noteForm:not(.show){display:none!important}
+  body.hz .menu{top:calc(env(safe-area-inset-top) + 14px);left:16px;z-index:60;max-height:calc(100dvh - 260px)}
+  body.hz-open .menu{top:calc(env(safe-area-inset-top) + 62px)}
+  /* زر الرجوع مكان أزرار الشريط العلوي، ما يغطي المحتوى */
+  body.hz-open .hdr #refBtn, body.hz-open .hdr #moreBtn, body.hz-open .hdr #searchBtn{display:none}
+  #hzTop{position:fixed;top:calc(env(safe-area-inset-top) + 14px);padding-bottom:4px;right:20px;left:20px;z-index:20;display:flex;flex-direction:column;gap:6px;pointer-events:none;text-shadow:0 1px 12px rgba(11,16,24,.9)}
   #hzTop > *{pointer-events:auto}
   #hzLive{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--hz-mut)}
   #hzLive i{width:8px;height:8px;border-radius:4px;background:var(--hz-teal);box-shadow:0 0 0 0 rgba(63,209,194,.6);animation:hzPulse 2.4s var(--ease-out) infinite}
   @keyframes hzPulse{0%{box-shadow:0 0 0 0 rgba(63,209,194,.55)}70%,100%{box-shadow:0 0 0 8px rgba(63,209,194,0)}}
-  #hzH{margin:0;font-family:"Reem Kufi","Readex Pro",sans-serif;font-weight:700;font-size:30px;line-height:1.3;color:#F4F7FA;max-width:350px;text-wrap:balance;transition:opacity .25s ease}
+  #hzH{margin:0;font-family:"Readex Pro",sans-serif;font-weight:600;font-size:28px;line-height:1.3;letter-spacing:-.3px;color:#F4F7FA;max-width:350px;text-wrap:balance;transition:opacity .25s ease}
   #hzP{margin:0;font-size:15px;line-height:1.6;color:#C3CFDA;max-width:330px}
   #hzActs{display:flex;gap:8px;margin-top:8px;align-items:center}
   .hzb{height:44px;min-width:44px;border-radius:22px;border:1px solid var(--hz-line);background:rgba(11,16,24,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--hz-tx);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:inherit;font-size:15px;transition:transform 160ms var(--ease-out),background-color .2s ease}
@@ -70,7 +76,7 @@
   #hzLayers button:active{transform:scale(.97)}
   #hzBot{position:fixed;left:0;right:0;bottom:0;z-index:19;padding:34px 20px calc(env(safe-area-inset-bottom) + 18px);background:linear-gradient(to top,var(--hz-ink) 72%,rgba(11,16,24,0));display:flex;flex-direction:column;gap:10px;cursor:pointer}
   #hzRow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-  #hzCity{font-family:"Reem Kufi","Readex Pro",sans-serif;font-size:21px;color:#F4F7FA;white-space:nowrap}
+  #hzCity{font-family:"Readex Pro",sans-serif;font-weight:600;font-size:20px;color:#F4F7FA;white-space:nowrap}
   #hzCap{font-size:12.5px;color:var(--hz-mut);text-align:left}
   #hzBars{position:relative;height:60px;display:flex;align-items:flex-end;gap:3px}
   #hzBars span{flex:1;border-radius:3px;background:#1E2A36;min-height:4px;transition:height .35s var(--ease-out),background-color .3s ease}
@@ -80,7 +86,7 @@
   #hzHours b{color:#F4F7FA;font-weight:600}
   #hzMore{display:flex;justify-content:center;margin-top:2px}
   #hzMore span{width:38px;height:4px;border-radius:2px;background:#3A4A5A}
-  #hzBack{position:fixed;z-index:40;left:16px;bottom:calc(env(safe-area-inset-bottom) + 16px);display:none}
+  #hzBack{position:fixed;z-index:40;left:18px;top:calc(env(safe-area-inset-top) + 9px);height:38px;font-size:14px;padding:0 12px;display:none}
   body.hz-open #hzBack{display:inline-flex}
   @keyframes sp{to{transform:rotate(360deg)}}
   :root{--ease-out:cubic-bezier(.23,1,.32,1);--ease-drawer:cubic-bezier(.32,.72,0,1)}
@@ -414,7 +420,7 @@
   </div>
   <div id="hzLayers"></div>
   <div id="hzBot" role="button" tabindex="0" aria-label="التفاصيل والتوقعات">
-    <div id="hzRow"><span id="hzCity">—</span><span id="hzCap">المطر بالساعة: آخر ساعتين والجاي ١٢</span></div>
+    <div id="hzRow"><span id="hzCity">—</span><span id="hzCap">المطر بالساعة: آخر ساعتين والجاي 12</span></div>
     <div id="hzBars"></div>
     <div id="hzHours"></div>
     <div id="hzMore"><span></span></div>
@@ -2339,7 +2345,7 @@ const HZ = (() => {
   const dist = (a,o,b,p) => { const x=Math.sin((b-a)*rad/2)**2+Math.cos(a*rad)*Math.cos(b*rad)*Math.sin((p-o)*rad/2)**2; return 2*R*Math.asin(Math.sqrt(x)); };
   const brg = (a,o,b,p) => { const y=Math.sin((p-o)*rad)*Math.cos(b*rad), x=Math.cos(a*rad)*Math.sin(b*rad)-Math.sin(a*rad)*Math.cos(b*rad)*Math.cos((p-o)*rad); return (Math.atan2(y,x)/rad+360)%360; };
   const DIRK = ['شمالك','شمال شرقك','شرقك','جنوب شرقك','جنوبك','جنوب غربك','غربك','شمال غربك'];
-  const AR = n => String(n).replace(/\d/g, d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+  const AR = n => String(n);
   let target = null, scanning = false, here = null, hereAt = 0;
   const el = id => document.getElementById(id);
 
@@ -2415,7 +2421,7 @@ const HZ = (() => {
       const at = await where();
       let r = await scanRadar(at.lat, at.lon);
       if(!r || r.km > 350){ const s2 = await scanSat(at.lat, at.lon).catch(()=>null); if(s2 && (!r || s2.km < r.km)) r = s2; }
-      if(frames.length) el('hzLiveT').textContent = 'مباشر، آخر رصد ' + new Date(frames.at(-1).time*1000).toLocaleTimeString('ar-SA',{hour:'numeric',minute:'2-digit'});
+      if(frames.length) el('hzLiveT').textContent = 'مباشر، آخر رصد ' + new Date(frames.at(-1).time*1000).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
       const go = el('hzGo');
       const word = r ? (r.lvl===3 ? 'مطر غزير' : r.lvl===2 ? 'مطر' : 'مطر خفيف') : '';
       if(r && r.km < 6){
@@ -2449,7 +2455,7 @@ const HZ = (() => {
     }
     const mx = Math.max(1.5, ...vals.map(v=>v.mm));
     el('hzBars').innerHTML = vals.map(v=>`<span class="${v.mm>=RAIN_MM ? (v.storm?'s':'r') : ''}" style="height:${Math.max(4, v.mm/mx*56)}px" title="${fmtH(v.t)}: ${r1(v.mm)} مم"></span>`).join('') + `<i id="hzNow" style="right:calc(${((i0-from)+0.5)/vals.length*100}% - 1px)"></i>`;
-    const hr = x => new Date(x).toLocaleTimeString('ar-SA',{hour:'numeric'});
+    const hr = x => new Date(x).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric'});
     const pick = [0, i0-from, Math.min(vals.length-1, i0-from+4), Math.min(vals.length-1, i0-from+8), vals.length-1];
     el('hzHours').innerHTML = pick.map((k,j)=> j===1 ? '<b>الحين</b>' : `<span>${vals[k] ? hr(vals[k].t) : ''}</span>`).join('');
   }
