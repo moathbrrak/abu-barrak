@@ -49,6 +49,19 @@
   .maplibregl-ctrl-attrib{font-size:9px;opacity:.6}
   .maplibregl-popup-content{direction:rtl;text-align:right;font-family:inherit;background:var(--sheet);color:var(--tx);border:1px solid var(--gb);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   .maplibregl-popup-tip{border-top-color:var(--sheet)!important;border-bottom-color:var(--sheet)!important}
+  #navOv{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:none;align-items:flex-end}
+  #navOv.on{display:flex}
+  .nvs{width:100%;max-height:88vh;overflow-y:auto;background:var(--sheet);border-top:1px solid var(--gb);border-radius:20px 20px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 18px);animation:nvUp .25s ease-out}
+  @keyframes nvUp{from{transform:translateY(40px);opacity:.5}}
+  .nvh{display:flex;align-items:center;margin-bottom:8px;font-size:17px}
+  .nvx{margin-inline-start:auto;width:34px;height:34px;border-radius:50%;border:0;background:var(--card2);font-size:15px}
+  .nvp{color:var(--mut);font-size:14px;line-height:1.7;margin:4px 0 12px}
+  .nvp b{color:var(--tx)}
+  .nvt{color:var(--mut);font-size:12.5px;margin:14px 2px 6px}
+  .nvb{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:right;padding:11px 14px;margin-bottom:7px;border-radius:13px;background:var(--card2);border:1px solid var(--gb);color:var(--tx);text-decoration:none;font-size:15px;font-family:inherit}
+  .nvb small{color:var(--mut);font-size:12.5px}
+  .nvb.main{background:var(--acc);border-color:transparent;color:var(--acc-tx);font-weight:600}
+  .nvb.main small{color:inherit;opacity:.8;font-weight:400}
   .maplibregl-popup-content a.nav{display:inline-block;margin-top:6px;padding:5px 10px;border-radius:10px;background:var(--acc);color:var(--acc-tx);text-decoration:none;font-weight:600}
   .maplibregl-popup-close-button{color:var(--mut);font-size:18px;left:4px;right:auto}
   /* أسماء عربية على الخريطة */
@@ -1379,7 +1392,68 @@ $('bLoc').onclick = () => {
 };
 
 // زر «خذني هنا»: يفتح قوقل ماب بالاتجاهات لنفس النقطة
-const navLink = (la,lo) => `<a class="nav" href="https://www.google.com/maps/dir/?api=1&destination=${la.toFixed(5)},${lo.toFixed(5)}&travelmode=driving" target="_blank" rel="noopener">🧭 خذني هنا (قوقل ماب)</a>`;
+const navLink = (la,lo) => `<a class="nav" href="#" data-nla="${la.toFixed(5)}" data-nlo="${lo.toFixed(5)}">🧭 خذني هنا</a>`;
+
+// ---------- الملاحة: أقرب طريق يوصله قوقل + تطبيقات الطرق الوعرة ----------
+document.addEventListener('click', e=>{
+  const a = e.target.closest('a.nav[data-nla]'); if(!a) return;
+  e.preventDefault(); e.stopPropagation();
+  openNav(+a.dataset.nla, +a.dataset.nlo);
+}, true);
+function km(m){ return m<1000 ? Math.round(m)+' م' : (m/1000).toFixed(m<10000?1:0)+' كم'; }
+function hav2(a1,o1,a2,o2){ const R=6371000,r=Math.PI/180,x=Math.sin((a2-a1)*r/2)**2+Math.cos(a1*r)*Math.cos(a2*r)*Math.sin((o2-o1)*r/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+const gmaps = (la,lo) => `https://www.google.com/maps/dir/?api=1&destination=${la.toFixed(6)},${lo.toFixed(6)}&travelmode=driving`;
+async function openNav(la, lo){
+  let ov = $('navOv');
+  if(!ov){
+    ov = document.createElement('div'); ov.id='navOv';
+    ov.innerHTML = '<div class="nvs"><div class="nvh"><b>🧭 خذني للنقطة</b><button class="nvx">✕</button></div><div id="nvBody"></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e=>{ if(e.target===ov || e.target.closest('.nvx')) ov.classList.remove('on'); });
+  }
+  const body = $('nvBody');
+  body.innerHTML = '<p class="nvp">أدوّر على أقرب طريق للسيارة…</p>';
+  ov.classList.add('on');
+  let snap = null;
+  try{
+    const r = await fetch(`https://router.project-osrm.org/nearest/v1/driving/${lo},${la}?number=1`);
+    const j = await r.json();
+    if(j.code==='Ok' && j.waypoints[0]){ const w=j.waypoints[0]; snap = {lo:w.location[0], la:w.location[1], d:hav2(la,lo,w.location[1],w.location[0]), name:w.name}; }
+  }catch(e){}
+  const far = snap && snap.d > 60;
+  const row = (href, t, sub, main) => `<a class="nvb${main?' main':''}" href="${href}" target="_blank" rel="noopener"><span>${t}</span>${sub?`<small>${sub}</small>`:''}</a>`;
+  let h = '';
+  if(far){
+    h += `<p class="nvp">النقطة بعيدة عن الطريق بـ <b>${km(snap.d)}</b>. قوقل ماب ما يوصل إلا للطرق، فأوديك لأقرب طريق لها${snap.name?` (${esc(snap.name)})`:''}، وبعدها تكمل بتطبيق طرق وعرة أو مشي.</p>`;
+    h += row(gmaps(snap.la,snap.lo), '🚗 قوقل ماب لأقرب طريق', `يبعد ${km(snap.d)} عن النقطة`, true);
+    h += row(gmaps(la,lo), 'قوقل ماب للنقطة نفسها', 'ممكن يرفض أو يوديك لمكان ثاني');
+  } else {
+    h += row(gmaps(la,lo), '🚗 قوقل ماب', snap ? 'النقطة على طريق' : '', true);
+  }
+  h += `<div class="nvt">للطرق الوعرة</div>`;
+  h += row(`https://osmand.net/map?pin=${la.toFixed(6)},${lo.toFixed(6)}#15/${la.toFixed(6)}/${lo.toFixed(6)}`, '⛰️ OsmAnd', 'يمشي على الدروب الترابية، ويشتغل بدون نت');
+  h += row(`om://map?ll=${la.toFixed(6)},${lo.toFixed(6)}&n=${encodeURIComponent('نقطة المطر')}`, '🗺️ Organic Maps', 'فيه دروب البر من OpenStreetMap، ويشتغل بدون نت');
+  h += `<button class="nvb" id="nvGpx"><span>📍 ملف GPX لقارمن</span><small>افتحه في Garmin Explore أو Tread أو أي جهاز قارمن</small></button>`;
+  h += `<div class="nvt">ثاني</div>`;
+  h += row(`https://maps.apple.com/?daddr=${la.toFixed(6)},${lo.toFixed(6)}&dirflg=d`, ' خرائط أبل', '');
+  h += `<button class="nvb" id="nvCopy"><span>📋 انسخ الإحداثيات</span><small dir="ltr">${la.toFixed(5)}, ${lo.toFixed(5)}</small></button>`;
+  body.innerHTML = h;
+  $('nvCopy').onclick = async ()=>{ try{ await navigator.clipboard.writeText(`${la.toFixed(6)}, ${lo.toFixed(6)}`); $('nvCopy').querySelector('span').textContent='✓ انتسخت'; }catch(e){} };
+  $('nvGpx').onclick = ()=>shareGpx(la, lo, snap && far ? snap : null);
+}
+async function shareGpx(la, lo, snap){
+  const t = new Date().toISOString();
+  const wpt = (a,o,n) => `  <wpt lat="${a.toFixed(6)}" lon="${o.toFixed(6)}"><time>${t}</time><name>${n}</name></wpt>\n`;
+  const gpx = `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="اخايله" xmlns="http://www.topografix.com/GPX/1/1">\n`
+    + wpt(la, lo, 'نقطة المطر') + (snap ? wpt(snap.la, snap.lo, 'أقرب طريق') : '') + `</gpx>\n`;
+  const name = `matar-${la.toFixed(3)}_${lo.toFixed(3)}.gpx`;
+  const file = new File([gpx], name, {type:'application/gpx+xml'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'نقطة المطر'}); return; }
+  }catch(e){ if(e.name==='AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+}
 // ---------- التراكمي بالضغط المطوّل ----------
 let accPop = null;
 async function accumPopup(ll){
