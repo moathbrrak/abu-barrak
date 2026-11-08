@@ -669,18 +669,25 @@ async function loadOverlays(){
   await Promise.all(['rdt','li','ir'].map(async k=>{
     try{
       const t = await capTime(LYR[k].ws, LYR[k].id);
-      if(!t || wmsTime[k]===t) return;
-      wmsTime[k] = t;
-      const id = 'ov-'+k, url = wmsUrl(LYR[k].ws, LYR[k].id, t), src = map.getSource(id);
+      const id = 'ov-'+k;
+      if(!t || (wmsTime[k]===t && map.getLayer(id))) return;
+      const url = wmsUrl(LYR[k].ws, LYR[k].id, t), src = map.getSource(id);
       if(src && src.setTiles) src.setTiles([url]);
       else addRaster(id, url, LYR[k].anchor, {tileSize:512, maxzoom:12, opacity:LYR[k].op, attr:'© EUMETSAT'});
       vis(id, lyrOn[k]);
+      wmsTime[k] = t;
     }catch(e){}
   }));
 }
 let refreshing = false;
 async function refreshNow(first){
   if(refreshing || !map) return; refreshing = true;
+  try{ await refreshInner(first); }catch(e){ console.warn('refresh', e); $('live').textContent='⚠️ يعيد المحاولة بعد دقيقة'; }
+  finally{ refreshing = false; }
+}
+const styleReady = () => map.isStyleLoaded() ? Promise.resolve() : new Promise(r => { const f=()=>{ if(map.isStyleLoaded()){ map.off('styledata',f); map.off('idle',f); r(); } }; map.on('styledata',f); map.on('idle',f); });
+async function refreshInner(first){
+  await styleReady();
   $('live').textContent='⟳ يشيك…';
   let newRad=0, newSat=0;
   try{ newRad = await loadRadar(); }catch(e){ $('rNote').textContent='تعذّر جلب الرادار ('+e.message+')'; }
@@ -693,7 +700,6 @@ async function refreshNow(first){
     flash(`🔴 رصد جديد ${newRad?'📡 رادار':'🛰️ قمر'} · ${t}`);
   }
   $('live').textContent = `● مباشر · فحص ${new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',second:'2-digit'})}`;
-  refreshing = false;
 }
 function flash(msg){ const el=$('newObs'); el.textContent=msg; el.style.display='block'; clearTimeout(flash.t); flash.t=setTimeout(()=>el.style.display='none', 8000); try{navigator.vibrate&&navigator.vibrate(80)}catch(e){} }
 let liveTimer = null;
