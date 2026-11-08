@@ -138,6 +138,10 @@
   .res button svg{color:var(--sign)}
   .res button small{display:block;color:var(--on-paper);font-size:12.5px}
   .hint{color:var(--on-paper);font-size:13.5px;line-height:1.8;margin:6px 0 14px}
+  .gl{margin:6px 0 4px}
+  .gl div{display:flex;gap:12px;align-items:center;padding:10px 2px;border-bottom:1px solid var(--rule);font-size:15px}
+  .gl .badge{min-width:26px;height:26px;font-size:13px;margin:0}
+  .gl small{color:var(--bad);font-size:12.5px;margin-inline-start:auto}
   .coord{direction:ltr;text-align:right;font-size:13px;color:var(--on-paper);margin:-4px 0 16px}
   .trip{display:flex;align-items:center;gap:12px;width:100%;padding:14px 2px;border-bottom:1px solid var(--rule);text-align:right}
   .trip b{flex:1;font:600 18px/1.3 var(--kufi)}
@@ -199,6 +203,7 @@
   <div id="grab"><div id="sum"><div id="sumA">مسار</div><div id="sumB"></div></div></div>
   <div id="acts">
     <button class="act main" id="addBtn"><svg><use href="#i-plus"/></svg>أضف وقفة</button>
+    <button class="act" id="gBtn"><svg><use href="#i-open"/></svg>من قوقل</button>
     <button class="act" id="navBtn"><svg><use href="#i-nav"/></svg>انطلق</button>
     <button class="act" id="sortBtn"><svg><use href="#i-sort"/></svg>رتّب</button>
     <button class="act" id="optBtn"><svg><use href="#i-route"/></svg>أقصر طريق</button>
@@ -213,7 +218,7 @@
   <h3>أضف وقفة <button class="x" data-close aria-label="إغلاق"><svg><use href="#i-x"/></svg></button></h3>
   <div class="seg" id="addTabs">
     <button data-t="search" class="on">بحث</button>
-    <button data-t="paste">رابط أو إحداثيات</button>
+    <button data-t="paste">رابط قوقل</button>
     <button data-t="bulk">عدة مواقع</button>
   </div>
   <div data-p="search">
@@ -223,10 +228,11 @@
     <div class="row"><button class="btn" id="addMe"><svg><use href="#i-loc"/></svg>موقعي الحالي</button><button class="btn" id="addCenter"><svg><use href="#i-pin"/></svg>وسط الخريطة</button></div>
   </div>
   <div data-p="paste" hidden>
-    <label class="fld"><span>رابط قوقل ماب أو إحداثيات مثل 21.4858, 39.1925</span><input id="pasteIn" autocomplete="off" dir="ltr"></label>
-    <label class="fld"><span>الاسم (اختياري)</span><input id="pasteName" autocomplete="off"></label>
-    <button class="btn main" id="pasteGo" style="width:100%">أضف الوقفة</button>
-    <p class="hint">الروابط المختصرة (maps.app.goo.gl) ما فيها إحداثيات. افتحها في قوقل ماب، اضغط على الدبوس، وانسخ الأرقام اللي تطلع.</p>
+    <label class="fld"><span>الصق رابط من قوقل ماب: مسار كامل، أو مكان، أو إحداثيات</span>
+      <div class="row"><input id="pasteIn" autocomplete="off" dir="ltr" placeholder="https://maps.app.goo.gl/…" style="flex:1"><button class="btn" id="pasteClip" style="flex:none;width:auto">الصق</button></div></label>
+    <button class="btn main" id="pasteGo" style="width:100%">اقرأ الرابط</button>
+    <div id="gPrev"></div>
+    <p class="hint">في قوقل ماب: سوّ المسار بوقفاته، اضغط مشاركة ← نسخ، وارجع هنا والصقه.</p>
   </div>
   <div data-p="bulk" hidden>
     <label class="fld"><span>كل موقع في سطر: اسم، أو إحداثيات، أو رابط. تقدر تكتب الاسم قبل الإحداثيات.</span><textarea id="bulkIn" placeholder="الطائف&#10;الهدا 21.3667, 40.2833"></textarea></label>
@@ -531,22 +537,134 @@ $('#qres').addEventListener('click', e=>{
   closeOv(); flyTo(s); toast('انضافت '+(s.name||'الوقفة'));
   $('#q').value=''; $('#qres').innerHTML='';
 });
-$('#pasteGo').onclick = ()=>{
-  const v = $('#pasteIn').value.trim();
-  const p = parseLoc(v);
-  if(!p){ toast(isShort(v) ? 'الرابط مختصر وما فيه إحداثيات – شوف الملاحظة تحت' : 'ما لقيت إحداثيات في النص', 3500); return; }
-  const s = addStop(p.lat, p.lng, $('#pasteName').value.trim() || cleanName(p.rest||''));
-  $('#pasteIn').value=''; $('#pasteName').value=''; closeOv(); flyTo(s);
+// ---------- روابط قوقل ماب ----------
+const URL_RE = /https?:\/\/[^\s"'<>]+/;
+// يفك الرابط المختصر عن طريق وسيط، لأن المتصفح ما يقدر يتبع تحويلة قوقل مباشرة
+async function expandShort(u){
+  const pick = txt => {
+    if(!txt) return null;
+    txt = txt.replace(/\\u003d/g,'=').replace(/\\u0026/g,'&').replace(/&amp;/g,'&').replace(/\\\//g,'/');
+    const m = txt.match(/https?:\/\/(?:www\.)?google\.[a-z.]+\/maps\/(?:dir|place|search)\/[^\s"'<>\\]+/) || txt.match(/https?:\/\/(?:www\.|maps\.)?google\.[a-z.]+\/maps\?[^\s"'<>\\]+/);
+    return m ? m[0] : null;
+  };
+  const fromFinal = f => {
+    if(!f) return null;
+    try{ const c = new URL(f).searchParams.get('continue'); if(c) f = c; }catch(e){}
+    return /google\.[a-z.]+\/maps|maps\.google/.test(f) ? f : null;
+  };
+  const tries = [
+    async ()=>{ const r = await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(u)); const j = await r.json(); return fromFinal(j.status && j.status.url) || pick(j.contents); },
+    async ()=>{ const r = await fetch('https://corsproxy.io/?url='+encodeURIComponent(u)); return pick(await r.text()); },
+    async ()=>{ const r = await fetch('https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u)); return pick(await r.text()); },
+  ];
+  for(const t of tries){ try{ const x = await t(); if(x) return x; }catch(e){} }
+  return null;
+}
+const dec = x => { try{ return decodeURIComponent(x.replace(/\+/g,' ')); }catch(e){ return x.replace(/\+/g,' '); } };
+const isMe = n => !n || /^(my location|your location|current location|موقعي|موقعك|موقعك الحالي|موقعي الحالي)$/i.test(n.trim());
+// يطلع قائمة الوقفات من رابط قوقل: [{name, lat, lng}] (الإحداثيات ممكن تكون ناقصة)
+function parseGoogle(u){
+  let url; try{ url = new URL(u); }catch(e){ return null; }
+  const q = url.searchParams, out = [];
+  const one = v => { v = dec(v||'').trim(); if(isMe(v)) return; const p = parseLoc(v); out.push(p && !cleanName(p.rest||'') ? {name:'', lat:p.lat, lng:p.lng} : {name:v}); };
+  // صيغة api=1
+  if(q.get('destination')){
+    if(q.get('origin')) one(q.get('origin'));
+    (q.get('waypoints')||'').split('|').filter(Boolean).forEach(one);
+    one(q.get('destination')); return out;
+  }
+  // الصيغة القديمة saddr / daddr=أ+to:ب
+  if(q.get('daddr')){
+    if(q.get('saddr')) one(q.get('saddr'));
+    dec(q.get('daddr')).split(/\s+to:\s*/).forEach(one); return out;
+  }
+  const path = url.pathname;
+  // /maps/dir/أ/ب/ج/@…/data=…
+  const dm = path.match(/\/maps\/dir\/(.*)$/);
+  if(dm){
+    const segs = dm[1].split('/').filter(x=>!/^@|^data=|^am=/.test(x));
+    const data = (path.match(/\/data=([^/?]*)/)||[])[1] || '';
+    const pairs = [...data.matchAll(/!1d(-?\d+\.\d+)!2d(-?\d+\.\d+)/g)].map(m=>({lng:+m[1], lat:+m[2]}));
+    // الأماكن اللي لها اسم ترتيبها في data بنفس ترتيبها في الرابط
+    let k = 0;
+    const named = segs.map(seg=>{ const v = dec(seg).trim(); if(isMe(v)) return null; const p = parseLoc(v); return p ? {name:'', lat:p.lat, lng:p.lng} : {name:v}; }).filter(Boolean);
+    const needs = named.filter(x=>x.lat==null).length;
+    named.forEach(x=>{ if(x.lat==null && pairs.length===needs && pairs[k]){ x.lat = pairs[k].lat; x.lng = pairs[k].lng; k++; } });
+    return named;
+  }
+  // مكان واحد /maps/place/الاسم/@…
+  const pm = path.match(/\/maps\/(?:place|search)\/([^/]+)/);
+  const p = parseLoc(u);
+  if(pm || p){ const name = pm ? dec(pm[1]).trim() : ''; const pp = parseLoc(name); return [p ? {name: pp?'':name, lat:p.lat, lng:p.lng} : {name}]; }
+  if(q.get('q')){ one(q.get('q')); return out; }
+  return null;
+}
+// يكمّل الإحداثيات الناقصة بالبحث عن الاسم
+async function fillCoords(list, onStep){
+  for(const x of list){
+    if(x.lat!=null) continue;
+    onStep && onStep(x.name);
+    await new Promise(r=>setTimeout(r, 1100));
+    try{ const r = await search(x.name); if(r[0]){ x.lat=+r[0].lat; x.lng=+r[0].lon; } }catch(e){}
+  }
+  return list;
+}
+// من أي نص (رابط مختصر، طويل، إحداثيات) إلى قائمة وقفات
+async function readGoogle(txt, onStep){
+  txt = String(txt||'').trim();
+  let u = (txt.match(URL_RE)||[])[0];
+  if(!u){ const p = parseLoc(txt); return p ? [{name:cleanName(p.rest||''), lat:p.lat, lng:p.lng}] : null; }
+  if(isShort(u)){ onStep && onStep('أفتح الرابط المختصر…'); const long = await expandShort(u); if(!long) return {err:'short'}; u = long; }
+  const list = parseGoogle(u);
+  if(!list || !list.length) return null;
+  return fillCoords(list, n=>onStep && onStep('أدوّر على '+n+'…'));
+}
+let gFound = null;
+$('#pasteClip').onclick = async ()=>{ try{ $('#pasteIn').value = await navigator.clipboard.readText(); $('#pasteGo').click(); }catch(e){ toast('اضغط مطوّلاً في الخانة واختر لصق'); $('#pasteIn').focus(); } };
+$('#pasteGo').onclick = async ()=>{
+  const v = $('#pasteIn').value.trim(); if(!v) return;
+  const pv = $('#gPrev'), btn = $('#pasteGo');
+  btn.disabled = true; pv.innerHTML = '<p class="hint">أقرأ الرابط…</p>';
+  const step = m => pv.innerHTML = `<p class="hint">${esc(m)}</p>`;
+  let res; try{ res = await readGoogle(v, step); }catch(e){ res = null; }
+  btn.disabled = false;
+  if(res && res.err==='short'){ pv.innerHTML = '<p class="hint" style="color:var(--bad)">ما قدرت أفتح الرابط المختصر الحين. افتحه في سفاري وانسخ الرابط الطويل اللي يطلع في الأعلى، والصقه هنا.</p>'; return; }
+  if(!res){ pv.innerHTML = '<p class="hint" style="color:var(--bad)">ما لقيت مواقع في هذا الرابط. تأكد إنه رابط من قوقل ماب.</p>'; return; }
+  gFound = res.filter(x=>x.lat!=null);
+  const miss = res.length - gFound.length;
+  pv.innerHTML = `<div class="gl">${res.map((x,i)=>`<div><span class="badge">${i+1}</span>${esc(x.name || (x.lat!=null ? x.lat.toFixed(4)+', '+x.lng.toFixed(4) : ''))}${x.lat==null?'<small>ما لقيته</small>':''}</div>`).join('')}</div>`
+    + (gFound.length ? `<p class="hint">${gFound.length===1?'لقيت مكان واحد':'لقيت '+gFound.length+' وقفات'}${miss?'، و'+miss+' ما قدرت أحدد مكانها':''}.</p>
+      <div class="row"><button class="btn main" id="gAdd">أضفها لهذه الرحلة</button>${gFound.length>1?'<button class="btn" id="gNew">رحلة جديدة</button>':''}</div>` : '');
+  if(!gFound.length) return;
+  $('#gAdd').onclick = ()=>importFound(false);
+  if($('#gNew')) $('#gNew').onclick = ()=>importFound(true);
 };
+function importFound(asNew){
+  if(!gFound || !gFound.length) return;
+  if(asNew){
+    const t = {id:uid(), name:(gFound[gFound.length-1].name ? 'إلى '+gFound[gFound.length-1].name : 'رحلة من قوقل'), stops:[], loop:false};
+    trips.push(t); curId = t.id; selId = null; routeData = null; routeKey = '';
+  }
+  gFound.forEach(x=>addStop(x.lat, x.lng, x.name));
+  toast(gFound.length===1 ? 'انضافت الوقفة' : 'انضافت '+gFound.length+' وقفات');
+  gFound = null; $('#pasteIn').value=''; $('#gPrev').innerHTML=''; closeOv(); fitAll();
+}
+$('#gBtn').onclick = ()=>{ openOv('addOv'); $('#addTabs [data-t="paste"]').click(); };
 $('#bulkGo').onclick = async ()=>{
   const lines = $('#bulkIn').value.split('\n').map(x=>x.trim()).filter(Boolean);
   if(!lines.length) return;
   const msg = $('#bulkMsg'); let ok=0; const fail=[];
   for(let i=0;i<lines.length;i++){
     const ln = lines[i]; msg.textContent = `(${i+1}/${lines.length}) ${ln.slice(0,40)}`;
+    if(URL_RE.test(ln)){
+      const label = cleanName(ln);
+      let r = null; try{ r = await readGoogle(ln); }catch(e){}
+      if(!r || r.err){ fail.push(ln); continue; }
+      r.filter(x=>x.lat!=null).forEach(x=>{ addStop(x.lat, x.lng, (r.length===1 && label) ? label : x.name); ok++; });
+      continue;
+    }
     const p = parseLoc(ln);
-    if(p){ addStop(p.lat, p.lng, cleanName(p.rest || ln.replace(/https?:\/\/\S+/,''))); ok++; continue; }
-    if(isShort(ln)){ fail.push(ln); continue; }
+    if(p){ addStop(p.lat, p.lng, cleanName(p.rest || '')); ok++; continue; }
     try{
       await new Promise(r=>setTimeout(r, 1100)); // حد البحث: طلب بالثانية
       const res = await search(ln);
