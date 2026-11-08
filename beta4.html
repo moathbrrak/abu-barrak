@@ -1314,8 +1314,8 @@ function createMap(c){
     fetch('regions.json').then(r=>r.json()).then(g=>{
       if(map.getSource('regions')) return;
       map.addSource('regions', {type:'geojson', data:g});
-      map.addLayer({id:'reg-halo', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#fff','line-opacity':.16,'line-width':['interpolate',['linear'],['zoom'],3,2.6,7,4.5,11,6]}}, 'a-sat');
-      map.addLayer({id:'reg-line', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#000','line-opacity':.75,'line-width':['interpolate',['linear'],['zoom'],3,1.3,7,2.5,11,3.5]}}, 'a-sat');
+      map.addLayer({id:'reg-halo', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#fff','line-opacity':0,'line-width':1}}, 'a-sat');
+      map.addLayer({id:'reg-line', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#000','line-opacity':1,'line-blur':0,'line-width':['interpolate',['linear'],['zoom'],3,1.4,6,2.2,9,3,12,3.6]}}, 'a-sat');
     }).catch(()=>{});
     setBase(ls.get('base', THEMES[theme].base));
     ok();
@@ -1386,12 +1386,14 @@ async function accumPopup(ll){
   if(noteMode) return;
   try{ navigator.vibrate && navigator.vibrate(30); }catch(e){}
   if(accPop) accPop.remove();
-  accPop = new maplibregl.Popup({offset:6, maxWidth:'260px'}).setLngLat(ll).setHTML('🌧️ يحسب التراكمي…').addTo(map);
+  // زر قوقل ماب يطلع على طول، والتراكمي يكمّل بعدين
+  const foot = `<span style="opacity:.6">${ll.lat.toFixed(3)}, ${ll.lng.toFixed(3)} · أقرب رادار: ${nearestRadar(ll.lat,ll.lng)[1]}</span><br>${navLink(ll.lat,ll.lng)}`;
+  accPop = new maplibregl.Popup({offset:6, maxWidth:'270px'}).setLngLat(ll).setHTML(`<b>🌧️ تراكمي آخر 6 ساعات</b><br><span class="spin">⟳</span> يحسب من القمر الصناعي…<br>${foot}`).addTo(map);
   const p = accPop;
   try{
     const a = await satAccum6h(ll.lat, ll.lng);
-    if(p.isOpen()) p.setHTML(`<b>🌧️ تراكمي آخر 6 ساعات</b><br>🛰️ ${r1(a.mm)} مم (تقدير القمر)<br>الشدة الحين: ${r1(a.now)} مم/س<br><span style="opacity:.6">${ll.lat.toFixed(3)}, ${ll.lng.toFixed(3)} · أقرب رادار: ${nearestRadar(ll.lat,ll.lng)[1]}</span><br>${navLink(ll.lat,ll.lng)}`);
-  }catch(err){ if(p.isOpen()) p.setHTML('تعذّر حساب التراكمي هنا'); }
+    if(p.isOpen()) p.setHTML(`<b>🌧️ تراكمي آخر 6 ساعات</b><br>🛰️ ${r1(a.mm)} مم (تقدير القمر)<br>الشدة الحين: ${r1(a.now)} مم/س<br>${foot}`);
+  }catch(err){ if(p.isOpen()) p.setHTML(`<b>🌧️ التراكمي</b><br>القمر الصناعي ما يرد الحين<br>${foot}`); }
 }
 
 // ---------- الملاحظات (محفوظة في جهازك) ----------
