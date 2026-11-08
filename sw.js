@@ -1,7 +1,7 @@
 // اخايله – Service Worker
 // الصفحة: من الشبكة أولاً (عشان أي تحديث ترفعه يوصل على طول)، ولو ما فيه نت يفتح آخر نسخة محفوظة
 // المكتبات والأيقونات: من الذاكرة أولاً (أسرع)
-const CACHE = 'akhila-v5';
+const CACHE = 'akhila-v6';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

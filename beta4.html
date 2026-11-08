@@ -22,14 +22,14 @@
 <style>
   /* ======== الثيمات ======== */
   :root{
-    --bg:#140f24; --glass:rgba(30,21,52,.62); --sheet:rgba(22,15,40,.95); --gb:rgba(255,255,255,.11);
+    --bg:#140f24; --glass:rgba(30,21,52,.88); --sheet:rgba(22,15,40,.97); --gb:rgba(255,255,255,.11);
     --card:rgba(255,255,255,.05); --card2:rgba(255,255,255,.08);
     --tx:#f4f0ff; --mut:#a59cc4; --acc:#ff7a59; --acc2:#a66bff; --acc-tx:#fff; --glow:rgba(255,122,89,.55);
     --rain:#5fb4ff; --warn:#ffb547; --bad:#ff5c7a; --ok:#58d68d;
     --top:calc(env(safe-area-inset-top) + 94px); --peek:300px;
   }
   [data-theme=green]{
-    --bg:#0b140f; --glass:rgba(14,30,21,.62); --sheet:rgba(10,22,15,.95); --gb:rgba(255,255,255,.10);
+    --bg:#0b140f; --glass:rgba(14,30,21,.88); --sheet:rgba(10,22,15,.97); --gb:rgba(255,255,255,.10);
     --tx:#eefbe9; --mut:#94ad9c; --acc:#b9f26b; --acc2:#3fbf7f; --acc-tx:#0b140f; --glow:rgba(185,242,107,.5);
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -37,7 +37,7 @@
   body{font-family:"IBM Plex Sans Arabic",-apple-system,"SF Arabic","Segoe UI",Tahoma,sans-serif;color:var(--tx);line-height:1.55;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
   input,textarea{-webkit-user-select:text;user-select:text}
   button{font-family:inherit;color:inherit}
-  .glass{background:var(--glass);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);border:1px solid var(--gb);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+  .glass{background:var(--glass);border:1px solid var(--gb);box-shadow:0 6px 20px rgba(0,0,0,.35)}
   .sub{color:var(--mut);font-size:12px}
   .spin{display:inline-block;animation:sp 1s linear infinite}
   @keyframes sp{to{transform:rotate(360deg)}}
@@ -49,17 +49,19 @@
   .maplibregl-ctrl-attrib{font-size:9px;opacity:.6}
   .maplibregl-popup-content{direction:rtl;text-align:right;font-family:inherit;background:var(--sheet);color:var(--tx);border:1px solid var(--gb);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.5)}
   .maplibregl-popup-tip{border-top-color:var(--sheet)!important;border-bottom-color:var(--sheet)!important}
+  .maplibregl-popup-content a.nav{display:inline-block;margin-top:6px;padding:5px 10px;border-radius:10px;background:var(--acc);color:var(--acc-tx);text-decoration:none;font-weight:600}
   .maplibregl-popup-close-button{color:var(--mut);font-size:18px;left:4px;right:auto}
   /* أسماء عربية على الخريطة */
   .ml{direction:rtl;white-space:nowrap;pointer-events:none;font-family:"IBM Plex Sans Arabic",sans-serif;text-shadow:0 1px 3px #000,0 0 8px rgba(0,0,0,.8)}
   .ml-c{font-size:14px;font-weight:600;color:rgba(255,255,255,.5);letter-spacing:1px}
+  .ml-r{font-size:12px;font-weight:600;color:rgba(255,230,200,.55);letter-spacing:.5px}
   .ml-s{font-size:13px;font-weight:400;color:rgba(170,200,255,.6);letter-spacing:2px}
   .ml-k,.ml-t{display:flex;align-items:center;gap:4px;color:#fff}
   .ml-k{font-size:13px;font-weight:600}
   .ml-t{font-size:11.5px;font-weight:400;color:rgba(255,255,255,.88)}
   .ml-k::before,.ml-t::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 4px #000}
   .ml-t::before{width:4px;height:4px;opacity:.8}
-  .pill{background:var(--glass);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#fff;border:1px solid var(--gb);border-radius:12px;padding:2px 8px;font:600 11px "IBM Plex Sans Arabic",sans-serif;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;gap:6px;align-items:center;cursor:pointer;direction:rtl}
+  .pill{background:var(--glass);color:#fff;border:1px solid var(--gb);border-radius:12px;padding:2px 8px;font:600 11px "IBM Plex Sans Arabic",sans-serif;white-space:nowrap;box-shadow:0 3px 10px rgba(0,0,0,.4);display:flex;gap:6px;align-items:center;cursor:pointer;direction:rtl}
   .pill b{color:var(--acc);font-weight:700}
   .pill.cur{background:var(--acc);border-color:#fff;color:var(--acc-tx);box-shadow:0 0 16px var(--glow)}
   .pill.cur b{color:var(--acc-tx)}
@@ -114,7 +116,7 @@
   .btn.primary{background:var(--acc);border-color:var(--acc);color:var(--acc-tx);font-weight:600}
 
   /* ======== اللوحة السفلية ======== */
-  #sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;height:calc(100vh - var(--top) - 4px);height:calc(100dvh - var(--top) - 4px);background:var(--sheet);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid var(--gb);border-radius:28px 28px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);transform:translateY(calc(100% - var(--peek)));transition:transform .34s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;max-width:640px;margin:0 auto}
+  #sheet{position:fixed;z-index:30;left:0;right:0;bottom:0;height:calc(100vh - var(--top) - 4px);height:calc(100dvh - var(--top) - 4px);background:var(--sheet);border-top:1px solid var(--gb);border-radius:28px 28px 0 0;box-shadow:0 -12px 40px rgba(0,0,0,.5);transform:translateY(calc(100% - var(--peek)));transition:transform .34s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;max-width:640px;margin:0 auto}
   #sheet.full{transform:translateY(0)}
   #sheet.mini{transform:translateY(calc(100% - var(--mini,150px)))}
   #sheet.drag{transition:none}
@@ -982,6 +984,8 @@ const LABELS = [
   ['السعودية',24.2,44.6,'c',3],['اليمن',15.7,47.6,'c',3],['عُمان',20.8,56.3,'c',3],['الإمارات',23.5,54.2,'c',4.2],['قطر',25.0,51.2,'c',5.2],
   ['الكويت',29.6,47.4,'c',4.8],['العراق',32.8,43.6,'c',3],['الأردن',30.9,36.8,'c',3.8],['مصر',26.6,29.8,'c',3],['السودان',16.2,30.2,'c',3],
   ['إريتريا',16.0,38.4,'c',4.5],['إثيوبيا',9.5,39.5,'c',3],['سوريا',35.0,38.6,'c',3.6],['إيران',31.5,54.5,'c',3],['البحرين',26.05,50.75,'c',6.2],
+  ['الشرقية',22.99,50.17,'r',5.3],['الحدود الشمالية',29.23,43.31,'r',5.3],['الجوف',29.56,38.37,'r',5.3],['نجران',18.29,45.69,'r',5.3],['عسير',19.35,42.95,'r',5.6],['جازان',17.3,42.73,'r',6],
+  ['تبوك',27.91,36.8,'r',5.3],['المدينة المنورة',24.93,39.44,'r',5.3],['مكة المكرمة',21.43,40.25,'r',5.6],['الرياض',23.34,45.14,'r',5.3],['القصيم',25.95,43.27,'r',5.6],['حائل',27.27,41.71,'r',5.3],['الباحة',20.16,41.42,'r',6.2],
   ['البحر الأحمر',20.9,38.2,'s',3.5,58],['الخليج العربي',27.2,51.0,'s',4,-28],['بحر العرب',15.5,61.5,'s',3],['خليج عدن',12.4,47.6,'s',4.5],
   ['مكة المكرمة',21.4225,39.8262,'k',4.5],['المدينة المنورة',24.4672,39.6111,'k',4.5],['الرياض',24.7136,46.6753,'k',4.2],['الدمام',26.4207,50.0888,'k',4.8],
   ['جدة',21.5433,39.1728,'k',4.5],['الطائف',21.2703,40.4158,'k',5.2],['تبوك',28.3835,36.5662,'k',4.8],['أبها',18.2164,42.5053,'k',4.8],
@@ -1012,7 +1016,8 @@ function updateLabels(){
   const avoid = cities.map(c=>[c.lat,c.lon]);
   labelMarks.forEach(L=>{
     const [nm,la,lo,kind,minZ] = L.def;
-    const maxZ = Math.min(cap, kind==='c'?6.8 : kind==='s'?8.5 : 11.5);
+    const maxZ = Math.min(cap, kind==='c'?6.8 : kind==='s'?8.5 : kind==='r'?7.6 : 11.5);
+    if(kind==='r' && !lyrOn.reg){ if(L.m){ L.m.remove(); L.m=null; } return; }
     const near = (kind==='k'||kind==='t') && avoid.some(([a,b])=>Math.abs(a-la)<0.06&&Math.abs(b-lo)<0.06);
     const want = z>=minZ && z<maxZ && !near;
     if(want && !L.m){
@@ -1069,6 +1074,8 @@ const LYR = {
   rdt: {name:'عواصف', ic:'⛈️', long:'⛈️ عواصف نامية', main:true, def:true, ws:'msg_fes', id:'rdt', op:1, every:15, anchor:'a-li'},
   li:  {name:'برق', ic:'⚡', long:'⚡ برق', main:true, def:true, ws:'mtg_fd', id:'li_afa', op:1, every:5, anchor:'a-labels'},
   ir:  {name:'☁️ سحب', def:false, ws:'mtg_fd', id:'ir105_hrfi', op:0.35, every:10, anchor:'a-cov'},
+  reg: {name:'🗺️ حدود المناطق', def:true},
+  roads:{name:'🛣️ الطرق والأسماء', def:false},
   cov: {name:'⭕ تغطية الرادار', def:false},
   sites:{name:'📍 مواقع الرادارات', def:false},
 };
@@ -1088,6 +1095,10 @@ function applyLyr(){
   if(rvHost && !map.getSource('cov')) addRaster('cov', `${rvHost}/v2/coverage/0/256/{z}/{x}/{y}/0/0_0.png`, 'a-sat', {maxzoom:7, opacity:0.3});
   vis('cov', lyrOn.cov);
   vis('sites', lyrOn.sites);
+  vis('reg-halo', lyrOn.reg); vis('reg-line', lyrOn.reg);
+  if(lyrOn.roads && !map.getSource('roads')) addRaster('roads', eox('overlay_base_bright_3857','png'), 'a-rad', {maxzoom:16, opacity:.9, attr:'© EOX, OSM'});
+  vis('roads', lyrOn.roads);
+  updateLabels();
   if(!lyrOn.rad && !lyrOn.sat && timer) stopPlay();
   show(fi);
   renderAges();
@@ -1285,7 +1296,7 @@ function createMap(c){
   map = new maplibregl.Map({
     container:'map', center:[c.lon,c.lat], zoom:5.2, maxZoom:17, minZoom:2,
     style:{version:8, sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':THEMES[theme].bg}}]},
-    attributionControl:{compact:true}, preserveDrawingBuffer:true,
+    attributionControl:{compact:true}, preserveDrawingBuffer:false, renderWorldCopies:false, pixelRatio:Math.min(window.devicePixelRatio||1, 2),
     dragRotate:false, pitchWithRotate:false, touchPitch:false, fadeDuration:0,
   });
   map.touchZoomRotate.disableRotation();
@@ -1296,6 +1307,13 @@ function createMap(c){
     map.addLayer({id:'sites', type:'circle', source:'sites', layout:{visibility:'none'}, paint:{'circle-radius':6,'circle-color':'#fff','circle-opacity':.25,'circle-stroke-color':'#fff','circle-stroke-width':1.5}}, 'a-labels');
     map.on('click','sites', e=>{ const p=e.features[0].properties; new maplibregl.Popup({offset:8}).setLngLat(e.lngLat).setHTML(`📡 رادار ${p.n} (${p.id})`).addTo(map); });
     labelMarks = LABELS.map(def=>({def, m:null}));
+    // حدود مناطق المملكة: خط أسود تحت المطر عشان ما يغطيه، مع هالة خفيفة تبينه على الخلفية الداكنة
+    fetch('regions.json').then(r=>r.json()).then(g=>{
+      if(map.getSource('regions')) return;
+      map.addSource('regions', {type:'geojson', data:g});
+      map.addLayer({id:'reg-halo', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#fff','line-opacity':.16,'line-width':['interpolate',['linear'],['zoom'],3,2.6,7,4.5,11,6]}}, 'a-sat');
+      map.addLayer({id:'reg-line', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#000','line-opacity':.75,'line-width':['interpolate',['linear'],['zoom'],3,1.3,7,2.5,11,3.5]}}, 'a-sat');
+    }).catch(()=>{});
     setBase(ls.get('base', THEMES[theme].base));
     ok();
   }));
@@ -1353,6 +1371,8 @@ $('bLoc').onclick = () => {
   }, ()=>{ $('bLoc').innerHTML = IC.loc; hint('⚠️ اسمح للمتصفح بالموقع'); setTimeout(()=>hint(''),3000); }, {enableHighAccuracy:true, timeout:10000});
 };
 
+// زر «خذني هنا»: يفتح قوقل ماب بالاتجاهات لنفس النقطة
+const navLink = (la,lo) => `<a class="nav" href="https://www.google.com/maps/dir/?api=1&destination=${la.toFixed(5)},${lo.toFixed(5)}&travelmode=driving" target="_blank" rel="noopener">🧭 خذني هنا (قوقل ماب)</a>`;
 // ---------- التراكمي بالضغط المطوّل ----------
 let accPop = null;
 async function accumPopup(ll){
@@ -1363,7 +1383,7 @@ async function accumPopup(ll){
   const p = accPop;
   try{
     const a = await satAccum6h(ll.lat, ll.lng);
-    if(p.isOpen()) p.setHTML(`<b>🌧️ تراكمي آخر 6 ساعات</b><br>🛰️ ${r1(a.mm)} مم (تقدير القمر)<br>الشدة الحين: ${r1(a.now)} مم/س<br><span style="opacity:.6">${ll.lat.toFixed(3)}, ${ll.lng.toFixed(3)} · أقرب رادار: ${nearestRadar(ll.lat,ll.lng)[1]}</span>`);
+    if(p.isOpen()) p.setHTML(`<b>🌧️ تراكمي آخر 6 ساعات</b><br>🛰️ ${r1(a.mm)} مم (تقدير القمر)<br>الشدة الحين: ${r1(a.now)} مم/س<br><span style="opacity:.6">${ll.lat.toFixed(3)}, ${ll.lng.toFixed(3)} · أقرب رادار: ${nearestRadar(ll.lat,ll.lng)[1]}</span><br>${navLink(ll.lat,ll.lng)}`);
   }catch(err){ if(p.isOpen()) p.setHTML('تعذّر حساب التراكمي هنا'); }
 }
 
@@ -1388,7 +1408,7 @@ function renderNotes(){
   if(map){
     noteMarks.forEach(m=>m.remove());
     noteMarks = notes.map(n=>new maplibregl.Marker({element:dot('#ffb547',16)}).setLngLat([n.lon,n.lat])
-      .setPopup(new maplibregl.Popup({offset:12}).setHTML(`<b>📝 ${esc(n.text)}</b><br><span style="opacity:.6">${fmtNote(n)}</span><br><a href="#" data-del="${n.id}" style="color:#ff5c7a">🗑️ حذف</a>`)).addTo(map));
+      .setPopup(new maplibregl.Popup({offset:12}).setHTML(`<b>📝 ${esc(n.text)}</b><br><span style="opacity:.6">${fmtNote(n)}</span><br>${navLink(n.lat,n.lon)} · <a href="#" data-del="${n.id}" style="color:#ff5c7a">🗑️ حذف</a>`)).addTo(map));
   }
   $('notesList').innerHTML = notes.length ? '<div class="ctitle">🗒️ ملاحظاتي</div>' + notes.slice().reverse().map(n=>`<div class="nitem"><div><b>${esc(n.text)}</b><br><span class="sub">${fmtNote(n)}</span></div><button class="btn" data-go="${n.id}">📍</button><button class="btn" data-del="${n.id}">🗑️</button></div>`).join('') : '<span class="sub">ما فيه ملاحظات. من ⋯ اختر «📝 ملاحظة» وبعدها المس الخريطة.</span>';
 }
@@ -1405,7 +1425,10 @@ $('tShot').onclick = async () => {
   const btn = $('tShot'); if(!map) return; btn.innerHTML = IC.wait;
   try{
     await new Promise(r => map.loaded() ? r() : map.once('idle', r));
-    const mc = map.getCanvas(), W = mc.clientWidth, H = mc.clientHeight, HEAD = 44, S = mc.width / W;
+    const mc0 = map.getCanvas();
+    // ننسخ الصورة لحظة الرسم (بدون preserveDrawingBuffer عشان الخريطة تكون أخف)
+    const mc = await new Promise(res => { map.once('render', () => { const k=document.createElement('canvas'); k.width=mc0.width; k.height=mc0.height; k.getContext('2d').drawImage(mc0,0,0); k.clientW=mc0.clientWidth; k.clientH=mc0.clientHeight; res(k); }); map.triggerRepaint(); });
+    const W = mc.clientW, H = mc.clientH, HEAD = 44, S = mc.width / W;
     const cv = document.createElement('canvas'); cv.width = mc.width; cv.height = mc.height + HEAD*S;
     const x = cv.getContext('2d'); x.scale(S,S);
     x.drawImage(mc, 0, HEAD, W, H);
