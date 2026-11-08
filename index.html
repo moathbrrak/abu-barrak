@@ -1004,14 +1004,16 @@ function computeAlerts({res, n, rain72, bh, bd, hi, td, firstIso}){
 // ================= الخريطة (MapLibre GL) =================
 let map = null, mapReady = null, radarAt = 0;
 const ML = 'https://unpkg.com/maplibre-gl@4.7.1/dist/';
+const PMT_LIB = 'https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js';
+const BM_LIB = 'https://unpkg.com/@protomaps/basemaps@5.7.0/dist/basemaps.js';
 let mlP = null;
 function loadMapLib(){
   if(window.maplibregl) return Promise.resolve();
   if(mlP) return mlP;
   mlP = new Promise((ok, no) => {
     const css = document.createElement('link'); css.rel='stylesheet'; css.href=ML+'maplibre-gl.css'; document.head.appendChild(css);
-    const js = document.createElement('script'); js.src=ML+'maplibre-gl.js';
-    js.onload=ok; js.onerror=()=>{mlP=null; no();}; document.head.appendChild(js);
+    const add = src => new Promise((a,b)=>{ const s=document.createElement('script'); s.src=src; s.onload=a; s.onerror=b; document.head.appendChild(s); });
+    Promise.all([add(ML+'maplibre-gl.js'), add(PMT_LIB).catch(()=>{}), add(BM_LIB).catch(()=>{})]).then(ok, ()=>{mlP=null; no();});
   });
   return mlP;
 }
@@ -1086,6 +1088,8 @@ const EOX = 'https://tiles.maps.eox.at/wmts/1.0.0/';
 const eox = (layer, ext='jpg') => `${EOX}${layer}/default/g/{z}/{y}/{x}.${ext}`;
 const ESRI_IMG = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
 const BASES = {
+  offline:{name:'📍 المحفوظة (بدون نت)', vector:'dark', under:[], over:[], max:15, tint:0, labelsMax:0, attr:''},
+  offlight:{name:'🗺️ المحفوظة (فاتحة)', vector:'light', under:[], over:[], max:15, tint:0, labelsMax:0, attr:''},
   dark:   {name:'🌑 داكنة', under:[{u:eox('terrain-light_3857'), paint:{'raster-saturation':-1,'raster-brightness-max':.46,'raster-contrast':.6}}], over:[], max:16, tint:.16, attr:'Terrain © EOX, OSM'},
   terrain:{name:'⛰️ تضاريس', under:[{u:eox('terrain_3857'), paint:{'raster-saturation':.1,'raster-brightness-max':.85,'raster-contrast':.25}}], over:[], max:16, tint:.12, attr:'Terrain © EOX, OSM'},
   sat:    {name:'🛰️ قمر صناعي', under:[{u:ESRI_IMG+'{z}/{y}/{x}', max:17}, {u:ESRI_IMG+'{z}/{y}/{x}?blankTile=false', minz:18, max:19}], over:[], max:19, tint:0, labelsMax:7, vlabels:true, attr:'Imagery © Esri, Maxar · © OpenStreetMap, OpenFreeMap'},
@@ -1103,13 +1107,13 @@ const VLABELS = [
   {id:'vl-peak', type:'symbol', 'source-layer':'mountain_peak', minzoom:11, layout:{'text-field':AR_NAME,'text-font':['Noto Sans Regular'],'text-size':12,'text-anchor':'top'}, paint:{...VHALO,'text-color':'#ffe7b0'}},
   {id:'vl-poi', type:'symbol', 'source-layer':'poi', minzoom:15, filter:['<=',['coalesce',['get','rank'],99],30], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Regular'],'text-size':12,'text-max-width':8}, paint:VHALO},
   {id:'vl-small', type:'symbol', 'source-layer':'place', minzoom:11, filter:['in',['get','class'],['literal',['suburb','neighbourhood','quarter','hamlet','isolated_dwelling','locality']]], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Regular'],'text-size':['interpolate',['linear'],['zoom'],11,11,16,14],'text-max-width':8}, paint:VHALO},
-  {id:'vl-village', type:'symbol', 'source-layer':'place', minzoom:9, filter:['==',['get','class'],'village'], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],9,11,15,15],'text-max-width':8}, paint:VHALO},
-  {id:'vl-town', type:'symbol', 'source-layer':'place', minzoom:6.5, filter:['==',['get','class'],'town'], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],6,11,14,17],'text-max-width':8}, paint:VHALO},
-  {id:'vl-city', type:'symbol', 'source-layer':'place', minzoom:7, filter:['==',['get','class'],'city'], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Bold'],'text-size':['interpolate',['linear'],['zoom'],7,14,12,20],'text-max-width':8}, paint:VHALO},
+  {id:'vl-village', type:'symbol', 'source-layer':'place', minzoom:9, filter:['==',['get','class'],'village'], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Medium'],'text-size':['interpolate',['linear'],['zoom'],9,11,15,15],'text-max-width':8}, paint:VHALO},
+  {id:'vl-town', type:'symbol', 'source-layer':'place', minzoom:6.5, filter:['==',['get','class'],'town'], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Medium'],'text-size':['interpolate',['linear'],['zoom'],6,11,14,17],'text-max-width':8}, paint:VHALO},
+  {id:'vl-city', type:'symbol', 'source-layer':'place', minzoom:7, filter:['==',['get','class'],'city'], layout:{'text-field':AR_NAME,'text-font':['Noto Sans Medium'],'text-size':['interpolate',['linear'],['zoom'],7,14,12,20],'text-max-width':8}, paint:VHALO},
 ];
 function setVLabels(){
   if(!map) return;
-  const on = !!(BASES[baseKey] && BASES[baseKey].vlabels) || !!lyrOn.roads;
+  const on = (!!(BASES[baseKey] && BASES[baseKey].vlabels) || !!lyrOn.roads) && !(BASES[baseKey] && BASES[baseKey].vector);
   const has = !!map.getLayer('vl-city');
   if(on && !has){
     if(!map.getSource('ofm')) map.addSource('ofm', {type:'vector', url:'https://tiles.openfreemap.org/planet', attribution:'© OpenStreetMap, OpenFreeMap'});
@@ -1127,14 +1131,108 @@ function addRaster(id, url, before, opt={}){
   map.addLayer(L, before);
 }
 function dropRaster(id){ if(map.getLayer(id)) map.removeLayer(id); if(map.getSource(id)) map.removeSource(id); }
+
+// =====================================================================
+//  الخريطة المحفوظة (بدون نت): Protomaps على Cloudflare R2
+//  - ksa-base.pmtiles (تقريب لين 10) ينحفظ كامل في الجوال ويفتح بدون نت
+//  - ksa.pmtiles (لين 15) يقرأ منه التطبيق اللي يحتاجه بس، والجوال يحفظ اللي شفته
+// =====================================================================
+const MAP_HOST = 'https://pub-9acf22c50b914bce87190f776231ad8e.r2.dev';
+const OFF_CACHE = 'akhila-offline-map';
+const OFF = { local:null, remote:null, ready:false, info:null };
+async function offBlob(){ try{ const c = await caches.open(OFF_CACHE); const r = await c.match(MAP_HOST+'/ksa-base.pmtiles'); return r ? await r.blob() : null; }catch(e){ return null; } }
+async function offInit(){
+  if(OFF.ready || !window.pmtiles) return OFF.ready;
+  const blob = await offBlob();
+  if(blob) OFF.local = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob], 'ksa-base.pmtiles')));
+  OFF.remote = new pmtiles.PMTiles(MAP_HOST + '/ksa.pmtiles');
+  // لو ما فيه خريطة محفوظة ولا نقدر نوصل للخريطة على النت، نرجع لصور القمر
+  if(!OFF.local){
+    try{ await Promise.race([OFF.remote.getHeader(), new Promise((_,no)=>setTimeout(()=>no(new Error('timeout')), 7000))]); }
+    catch(e){ OFF.remote = null; return false; }
+  }
+  maplibregl.addProtocol('ksa', async (params) => {
+    const m = params.url.match(/ksa:\/\/(\d+)\/(\d+)\/(\d+)/); if(!m) return {data:new Uint8Array()};
+    const z = +m[1], x = +m[2], y = +m[3];
+    let t = null;
+    if(OFF.local && z <= 10){ try{ t = await OFF.local.getZxy(z,x,y); }catch(e){} }
+    if(!t && OFF.remote){ try{ t = await OFF.remote.getZxy(z,x,y); }catch(e){} }
+    return { data: t ? new Uint8Array(t.data) : new Uint8Array() };
+  });
+  OFF.ready = true; return true;
+}
+// تحميل الخريطة الأساسية مرة وحدة (مع نسبة التقدم)
+async function offDownload(onProg){
+  try{ if(navigator.storage && navigator.storage.persist) await navigator.storage.persist(); }catch(e){}
+  const r = await fetch(MAP_HOST + '/ksa-base.pmtiles', {cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const total = +r.headers.get('content-length') || 0, rd = r.body.getReader(), parts = []; let got = 0;
+  for(;;){ const {done, value} = await rd.read(); if(done) break; parts.push(value); got += value.length; onProg && onProg(got, total); }
+  const blob = new Blob(parts, {type:'application/octet-stream'});
+  const c = await caches.open(OFF_CACHE);
+  await c.put(MAP_HOST+'/ksa-base.pmtiles', new Response(blob, {headers:{'content-type':'application/octet-stream','content-length':String(blob.size)}}));
+  OFF.local = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob], 'ksa-base.pmtiles')));
+  return blob.size;
+}
+// تحميل تفاصيل المنطقة الظاهرة (تقريب 11 لين 14) عشان تشتغل بدون نت
+async function offArea(onProg, cancel){
+  const b = map.getBounds(), tiles = [];
+  const t2 = (lo,la,z)=>{ const n=2**z, r=la*Math.PI/180; return [Math.floor((lo+180)/360*n), Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n)]; };
+  for(let z=11; z<=14; z++){
+    const [x0,y0] = t2(b.getWest(), b.getNorth(), z), [x1,y1] = t2(b.getEast(), b.getSouth(), z);
+    for(let x=x0;x<=x1;x++) for(let y=y0;y<=y1;y++) tiles.push([z,x,y]);
+  }
+  if(tiles.length > 6000) return {tooBig:tiles.length};
+  let done = 0, i = 0;
+  const worker = async ()=>{ while(i < tiles.length && !(cancel && cancel())){ const [z,x,y] = tiles[i++]; try{ await OFF.remote.getZxy(z,x,y); }catch(e){} onProg && onProg(++done, tiles.length); } };
+  await Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]);
+  return {count:tiles.length};
+}
+// طبقات الخريطة المرسومة (بالعربي) من Protomaps
+function offLayers(flavor){
+  if(!window.basemaps) return [];
+  try{ return basemaps.layers('ksa', basemaps.namedFlavor(flavor), {lang:'ar'}); }catch(e){ return []; }
+}
+let offIds = [];
+function offApply(on, flavor){
+  offIds.forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); }); offIds = [];
+  if(!on) return;
+  if(!map.getSource('ksa')) map.addSource('ksa', {type:'vector', tiles:['ksa://{z}/{x}/{y}'], minzoom:0, maxzoom:15, attribution:'© OpenStreetMap · Protomaps'});
+  offLayers(flavor).forEach(l=>{
+    if(l.id==='background') return;
+    // الكتابة فوق الرادار، والباقي تحت كل شي
+    map.addLayer(l, l.type==='symbol' ? 'a-labels' : 'tint'); offIds.push(l.id);
+  });
+}
+async function offTool(t){
+  const msg = m => { const el = $('offMsg'); if(el) el.textContent = m; };
+  if(!OFF.ready){ await offInit().catch(()=>{}); if(!OFF.ready){ msg('مكتبة الخريطة ما تحمّلت، تأكد من النت'); return; } }
+  if(t==='offdl'){
+    if(OFF.local){ msg('الخريطة الأساسية محفوظة، وتشتغل بدون نت.'); return; }
+    msg('أحمّل الخريطة…');
+    try{
+      const size = await offDownload((g,tot)=>msg(tot ? `أحمّل الخريطة… ${Math.round(g/tot*100)}% (${(tot/1048576).toFixed(0)} ميقا)` : `أحمّل… ${(g/1048576).toFixed(1)} ميقا`));
+      msg(`انحفظت (${(size/1048576).toFixed(0)} ميقا). الخريطة الحين تشتغل بدون نت.`);
+      if(BASES[baseKey].vector) setBase(baseKey); renderMenu();
+    }catch(e){ msg('ما قدرت أحمّلها: '+(e.message||e)+'. ممكن الخريطة لسا ما ارتفعت.'); }
+  } else {
+    if(!OFF.remote){ msg('تحتاج نت عشان تحفظ تفاصيل منطقة'); return; }
+    if(map.getZoom() < 9){ msg('قرّب الخريطة على المنطقة اللي تبيها أول'); return; }
+    msg('أحفظ تفاصيل المنطقة…');
+    const r = await offArea((d,n)=>msg(`أحفظ تفاصيل المنطقة… ${d} من ${n}`));
+    msg(r.tooBig ? 'المنطقة كبيرة، قرّب أكثر وجرب' : `انحفظت تفاصيل المنطقة (${r.count} مربع).`);
+  }
+}
 function setTint(){ if(map && map.getLayer('tint')) map.setPaintProperty('tint','background-opacity', BASES[baseKey]?.tint ?? 0); }
 function setBase(k){
   if(!BASES[k]) k = 'dark';
+  if(BASES[k].vector && !OFF.ready) k = 'sat';
   baseIds.forEach(dropRaster); baseIds = [];
   const b = BASES[k];
   b.under.forEach((x,i)=>{ const id='base-u'+i; addRaster(id, x.u, 'tint', {maxzoom:x.max??b.max, minzoom:x.minz, attr:i?'':b.attr, fade:150, opacity:x.op??1, paint:x.paint}); baseIds.push(id); });
   b.over.forEach((x,i)=>{ const id='base-o'+i; addRaster(id, x.u, 'a-labels', {maxzoom:b.max, opacity:x.op??1, fade:150, minzoom:x.minz, paint:x.paint}); baseIds.push(id); });
-  baseKey = k; ls.set('base2', k);
+  offApply(!!b.vector && OFF.ready, b.vector);
+  baseKey = k; ls.set('base3', k);
   setTint(); updateLabels(); renderMenu(); setVLabels();
 }
 
@@ -1182,6 +1280,10 @@ function renderMenu(){
   m.innerHTML = `
     <h4>طبقات إضافية</h4><div class="mg">${Object.entries(LYR).map(([k,v])=>`<button data-k="${k}" class="${lyrOn[k]?'on':''}">${v.long||v.name}</button>`).join('')}</div>
     <h4>الخريطة</h4><div class="mg">${Object.entries(BASES).map(([k,v])=>`<button data-b="${k}" class="${baseKey===k?'on':''}">${v.name}</button>`).join('')}</div>
+    <h4>بدون نت</h4><div class="mg">
+      <button data-tool="offdl">${OFF.local ? '✓ الخريطة محفوظة في جوالك' : '⬇︎ احفظ خريطة المملكة في جوالك'}</button>
+      <button data-tool="offarea">⬇︎ احفظ تفاصيل المنطقة الظاهرة</button>
+    </div><div class="sub" id="offMsg" style="margin:-4px 2px 8px"></div>
     <h4>الثيم</h4><div class="mg">${Object.entries(THEMES).map(([k,v])=>`<button data-th="${k}" class="${theme===k?'on':''}"><span class="sw" style="background:${v.sw}"></span>${v.name}</button>`).join('')}</div>
     <h4>أدوات</h4><div class="mg">
       <button data-tool="note" class="${noteMode?'on':''}">📝 ملاحظة على الخريطة</button>
@@ -1200,6 +1302,7 @@ $('menu').onclick = e => {
   else if(b.dataset.tool){
     $('menu').classList.remove('show');
     const t = b.dataset.tool;
+    if(t==='offdl' || t==='offarea'){ $('menu').classList.add('show'); offTool(t); return; }
     if(t==='note') setNoteMode(!noteMode);
     if(t==='notes'){ setPane('now'); $('notesList').style.display='block'; renderNotes(); openSheet(true); setTimeout(()=>$('notesList').scrollIntoView({behavior:'smooth'}),380); }
     if(t==='ksa' && map) map.fitBounds([[34.5,16],[55.7,32.3]], {padding:mapPad(), duration:600});
@@ -1369,12 +1472,12 @@ function createMap(c){
   try{ if(maplibregl.getRTLTextPluginStatus && maplibregl.getRTLTextPluginStatus()==='unavailable') maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.3.0/dist/mapbox-gl-rtl-text.js', true); }catch(e){}
   map = new maplibregl.Map({
     container:'map', center:[c.lon,c.lat], zoom:5.2, maxZoom:19, minZoom:2,
-    style:{version:8, glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':THEMES[theme].bg}}]},
+    style:{version:8, glyphs:'https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf', sprite:'https://protomaps.github.io/basemaps-assets/sprites/v4/dark', sources:{}, layers:[{id:'bg', type:'background', paint:{'background-color':THEMES[theme].bg}}]},
     attributionControl:{compact:true}, preserveDrawingBuffer:false, renderWorldCopies:false, pixelRatio:Math.min(window.devicePixelRatio||1, 2),
     dragRotate:false, pitchWithRotate:false, touchPitch:false, fadeDuration:0,
   });
   map.touchZoomRotate.disableRotation();
-  mapReady = new Promise(ok => map.on('load', ()=>{
+  mapReady = new Promise(ok => map.on('load', async ()=>{
     map.addLayer({id:'tint', type:'background', paint:{'background-color':THEMES[theme].tint, 'background-opacity':0}});
     ANCHORS.forEach(id => map.addLayer({id, type:'background', layout:{visibility:'none'}, paint:{'background-color':'#000'}}));
     map.addSource('sites', {type:'geojson', data:{type:'FeatureCollection', features:RADARS.map(([id,n,la,lo])=>({type:'Feature', properties:{id,n}, geometry:{type:'Point', coordinates:[lo,la]}}))}});
@@ -1388,7 +1491,8 @@ function createMap(c){
       map.addLayer({id:'reg-halo', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#fff','line-opacity':0,'line-width':1}}, 'a-sat');
       map.addLayer({id:'reg-line', type:'line', source:'regions', layout:{'line-join':'round','visibility':lyrOn.reg?'visible':'none'}, paint:{'line-color':'#000','line-opacity':1,'line-blur':0,'line-width':['interpolate',['linear'],['zoom'],3,1.4,6,2.2,9,3,12,3.6]}}, 'a-sat');
     }).catch(()=>{});
-    setBase(ls.get('base2', 'sat'));
+    await offInit().catch(()=>{});
+    setBase(ls.get('base3', 'offline'));
     map.on('error', e=>{ if(baseKey==='sat' && e.sourceId==='base-u0' && ++esriErr===6) setBase('sat2'); });
     ok();
   }));
