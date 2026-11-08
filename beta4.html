@@ -36,7 +36,7 @@
   html,body{height:100%;overflow:hidden;background:var(--bg)}
   @font-face{font-family:"Reem Kufi";src:url(rihla/fonts/reemkufi.woff) format("woff");font-weight:400 700;font-display:swap}
   @font-face{font-family:"Readex Pro";src:url(rihla/fonts/readex.woff) format("woff");font-weight:160 700;font-display:swap}
-  #hCity,.ctitle,.nvh b,#nhD{font-family:"Reem Kufi","Readex Pro",sans-serif}
+  #hCity,#nhD{font-family:"Reem Kufi","Readex Pro",sans-serif}
   body{font-family:"Readex Pro","IBM Plex Sans Arabic",-apple-system,"SF Arabic","Segoe UI",Tahoma,sans-serif;color:var(--tx);line-height:1.55;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
   input,textarea{-webkit-user-select:text;user-select:text}
   button{font-family:inherit;color:inherit}
@@ -2136,9 +2136,10 @@ const EI = (() => {
     mute:'<path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6M21 9l-5 6"/>',
     x:'<path d="M6 6l12 12M18 6 6 18"/>',
     check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+    tap:'<path d="M9 11V5a2 2 0 0 1 4 0v5l4.4 1a2 2 0 0 1 1.6 2.3L18 19a3 3 0 0 1-3 2.5h-3.6a3 3 0 0 1-2.4-1.2L5.6 16a1.6 1.6 0 0 1 2.4-2.1L9 15"/>',
     road2:'<path d="M3 12h18M12 3v18"/>',
   };
-  const M = {'🔍':'search','📡':'radar','📍':'pin','☀':'sun|sun','🌤':'suncloud|sun','⛅':'suncloud|sun','🌥':'suncloud','☁':'cloud','🌫':'fog','🌦':'drizzle|rain','🌧':'rain|rain','🌨':'snow','⛈':'storm|warn','⚡':'zap|warn','🌙':'moon','🌑':'moon','🌒':'moon','🌓':'moon','🌔':'moon','🌕':'moon','🌖':'moon','🌗':'moon','🌘':'moon','🛰':'sat','📊':'chart','💧':'drop|rain','⚠':'warn|warn','🕐':'clock','⏱':'clock','🎯':'target','🌡':'thermo','🕶':'uv','🌇':'sunset','🧭':'compass','⚖':'scale','🌊':'waves|rain','💨':'wind','🌬':'wind','⛰':'mountain','🗺':'map','🛣':'road','📝':'note','🗒':'list','❔':'help','🏁':'flag','🚗':'car','📋':'copy','✏':'edit','🙈':'eyeoff','🧳':'bag','🔊':'sound','🔇':'mute','✕':'x','✓':'check','📌':'pin'};
+  const M = {'🔍':'search','📡':'radar','📍':'pin','☀':'sun|sun','🌤':'suncloud|sun','⛅':'suncloud|sun','🌥':'suncloud','☁':'cloud','🌫':'fog','🌦':'drizzle|rain','🌧':'rain|rain','🌨':'snow','⛈':'storm|warn','⚡':'zap|warn','🌙':'moon','🌑':'moon','🌒':'moon','🌓':'moon','🌔':'moon','🌕':'moon','🌖':'moon','🌗':'moon','🌘':'moon','🛰':'sat','📊':'chart','💧':'drop|rain','⚠':'warn|warn','🕐':'clock','⏱':'clock','🎯':'target','🌡':'thermo','🕶':'uv','🌇':'sunset','🧭':'compass','⚖':'scale','🌊':'waves|rain','💨':'wind','🌬':'wind','⛰':'mountain','🗺':'map','🛣':'road','📝':'note','🗒':'list','❔':'help','🏁':'flag','🚗':'car','📋':'copy','✏':'edit','🙈':'eyeoff','🧳':'bag','🔊':'sound','🔇':'mute','✕':'x','✓':'check','📌':'pin','👆':'tap'};
   const keys = Object.keys(M).sort((a,b)=>b.length-a.length).map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
   const RE = new RegExp('(' + keys.join('|') + ')\\uFE0F?', 'gu');
   const svg = k => { const [n,c] = M[k].split('|'); return `<svg class="ei${c?' '+c:''}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`; };
