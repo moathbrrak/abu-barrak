@@ -168,6 +168,7 @@
   .tlrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--mut);margin-top:2px}
   .live{color:var(--ok);white-space:nowrap}
   .live::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-inline-end:5px;animation:pulse 1.6s ease-in-out infinite}
+  .live.warn{color:var(--warn)}
   .live.off{color:var(--mut)} .live.off::before{animation:none}
   @keyframes pulse{50%{opacity:.25}}
 
@@ -296,11 +297,15 @@
   .dacc .dv small{display:block;font-size:11px}
   /* لما تنفتح اللوحة كاملة: الملخص يصغر عشان يبان المحتوى */
   #sheet.full .pchips,#sheet.full .days3,#sheet.mini .pchips,#sheet.mini .days3,#sheet.mini .hl{display:none}
-  #sheet.full .ptemp,#sheet.mini .ptemp{font-size:32px}
-  #sheet.full .illo,#sheet.mini .illo{width:56px;height:44px}
-  #sheet.full .pill2,#sheet.mini .pill2{width:58px}
+  #sheet.full .ptemp{font-size:32px}
+  #sheet.full .illo{width:56px;height:44px}
+  #sheet.full .pill2{width:58px}
   #sheet.full .tl,#sheet.mini .tl{margin-top:16px}
-  #sheet.mini .pverd{font-size:12px}
+  /* الوضع المصغّر: سطر واحد (المدينة + الحرارة) وشريط الوقت */
+  #sheet.mini .pill2,#sheet.mini .pverd{display:none}
+  #sheet.mini .pl{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  #sheet.mini .ptemp{font-size:26px;letter-spacing:-1px}
+  #sheet.mini .tl{margin-top:14px}
   .ptemp,.illo,.pill2{transition:font-size .25s,width .25s,height .25s}
   @media (min-width:700px){ .hdr,.tabs{max-width:620px;margin:0 auto} }
 </style>
@@ -629,8 +634,8 @@ const satAccCache = {};
 let satTimesCache = null;
 async function satTimes(ws,id,hours,stepMin){
   if(satTimesCache && Date.now()-satTimesCache.at<5*60e3 && satTimesCache.k===hours+'/'+stepMin) return satTimesCache.v;
-  const r=await fetch(`https://view.eumetsat.int/geoserver/${ws}/${id}/ows?service=WMS&version=1.3.0&request=GetCapabilities`);
-  const t=await r.text(); const dim=(t.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)</)||[])[1]||'';
+  const t=await fetchText(`https://view.eumetsat.int/geoserver/${ws}/${id}/ows?service=WMS&version=1.3.0&request=GetCapabilities`);
+  const dim=(t.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)</)||[])[1]||'';
   const last=dim.split(',').pop().split('/'); const end=new Date(last.length===3?last[1]:last[0]).getTime();
   const out=[]; for(let x=end; x>end-hours*3600e3; x-=stepMin*60e3) out.unshift(new Date(x).toISOString());
   satTimesCache={at:Date.now(), k:hours+'/'+stepMin, v:out};
@@ -1177,9 +1182,16 @@ $('rSlider').oninput = e => { stopPlay(); show(+e.target.value); };
 window.addEventListener('resize', placeBubble);
 
 // ---------- جلب البيانات ----------
+// جلب نص مع مهلة: لو مصدر علّق ما يوقف الباقي
+async function fetchText(url, ms=9000){
+  const ctl = new AbortController(), t = setTimeout(()=>ctl.abort(), ms);
+  try{ const r = await fetch(url, {signal:ctl.signal, cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); return await r.text(); }
+  catch(e){ throw new Error(e.name==='AbortError' ? 'ما رد خلال 9 ثواني' : 'ما يرد'); }
+  finally{ clearTimeout(t); }
+}
 async function capTime(ws,id){
-  const r = await fetch(`${EUM}${ws}/${id}/ows?service=WMS&version=1.3.0&request=GetCapabilities`, {cache:'no-store'});
-  const t = await r.text(); const dim = (t.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)</)||[])[1] || '';
+  const t = await fetchText(`${EUM}${ws}/${id}/ows?service=WMS&version=1.3.0&request=GetCapabilities`);
+  const dim = (t.match(/<Dimension[^>]*name="time"[^>]*>([^<]*)</)||[])[1] || '';
   const last = dim.split(',').pop().split('/'); return last.length===3 ? last[1] : last[0];
 }
 async function loadRadar(){
@@ -1209,15 +1221,18 @@ async function loadOverlays(){
       if(src && src.setTiles) src.setTiles([url]);
       else addRaster(id, url, LYR[k].anchor, {tileSize:512, maxzoom:12, opacity:LYR[k].op, attr:'© EUMETSAT'});
       vis(id, lyrOn[k]);
-      wmsTime[k] = t;
-    }catch(e){}
+      wmsTime[k] = t; delete srcErr[k];
+    }catch(e){ srcErr[k] = e.message; }
   }));
 }
-let refreshing = false;
+let refreshing = 0;
+const srcErr = {};   // المصادر اللي ما ردت في آخر فحص
 async function refreshNow(first){
-  if(refreshing || !map) return; refreshing = true;
+  if(!map) return;
+  if(refreshing && Date.now()-refreshing < 45e3) return;   // لو فحص علّق أكثر من 45 ث نبدأ من جديد
+  refreshing = Date.now();
   try{ await refreshInner(first); }catch(e){ console.warn('refresh', e); $('live').textContent='يعيد المحاولة بعد دقيقة'; }
-  finally{ refreshing = false; }
+  finally{ refreshing = 0; }
 }
 // نتأكد إن تعريف الخريطة جاهز بس (مو كل البلاطات)، ومع مهلة عشان ما يعلق أبداً
 const styleReady = () => new Promise(r => {
@@ -1229,17 +1244,22 @@ async function refreshInner(first){
   if(mapReady) await mapReady;   // ما نبدأ قبل ما تجهز الخريطة
   await styleReady();
   $('live').textContent='يشيك…';
-  let newRad=0, newSat=0;
-  try{ newRad = await loadRadar(); }catch(e){ $('rNote').textContent='تعذّر جلب الرادار ('+e.message+')'; }
-  try{ newSat = await loadSatHistory(); }catch(e){}
-  await loadOverlays();
-  if(first || newRad || newSat){ buildSteps(true); applyLyr(); }
-  else renderAges();
+  // 1) الرادار أولاً ويظهر على طول بدون ما ينتظر الأقمار
+  let newRad = 0;
+  try{ newRad = await loadRadar(); delete srcErr.rad; }catch(e){ srcErr.rad = e.message; }
+  if(first || newRad || !steps.length){ buildSteps(true); applyLyr(); }
+  // 2) الأقمار والعواصف والبرق بالتوازي، وكل واحد بمهلة
+  const [sat] = await Promise.allSettled([loadSatHistory(), loadOverlays()]);
+  let newSat = 0;
+  if(sat.status==='fulfilled'){ newSat = sat.value; delete srcErr.sat; } else srcErr.sat = sat.reason?.message || 'ما يرد';
+  if(newSat || (first && satFrames.length)){ buildSteps(true); applyLyr(); } else renderAges();
   if(newRad || newSat){
     const t = new Date((newRad*1000)||newSat).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
     flash(`🔴 رصد جديد ${newRad?'📡 رادار':'🛰️ قمر'} · ${t}`);
   }
-  $('live').textContent = `مباشر · فحص ${new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'})}`;
+  const bad = Object.keys(srcErr).map(k=>LYR[k]?.name).filter(Boolean);
+  $('live').textContent = `مباشر · فحص ${new Date().toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'})}${bad.length?` · ⚠️ ما يرد: ${bad.join('، ')}`:''}`;
+  $('live').classList.toggle('warn', !!bad.length);
 }
 function flash(msg){ const el=$('newObs'); el.textContent=msg; el.style.display='block'; clearTimeout(flash.t); flash.t=setTimeout(()=>el.style.display='none', 8000); try{navigator.vibrate&&navigator.vibrate(80)}catch(e){} }
 let liveTimer = null;
@@ -1254,7 +1274,7 @@ function renderAges(){
   $('ages').innerHTML = items.map(([n,t,lim])=>{
     const m=(Date.now()-new Date(t).getTime())/60000;
     return `<span>${n}: <b class="${m>lim?'old':''}">${ago(t)}</b></span>`;
-  }).join('');
+  }).join('') + Object.entries(srcErr).map(([k,e])=>`<span>${LYR[k]?.long||LYR[k]?.name||k}: <b class="old">${e} — يعيد المحاولة كل دقيقة</b></span>`).join('');
 }
 
 // ---------- إنشاء الخريطة ----------

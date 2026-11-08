@@ -1,7 +1,7 @@
 // اخايله – Service Worker
 // الصفحة: من الشبكة أولاً (عشان أي تحديث ترفعه يوصل على طول)، ولو ما فيه نت يفتح آخر نسخة محفوظة
 // المكتبات والأيقونات: من الذاكرة أولاً (أسرع)
-const CACHE = 'akhila-v4';
+const CACHE = 'akhila-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -24,7 +24,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   // ملفات التطبيق الثابتة + مكتبة الخريطة
-  if (url.origin === location.origin || url.hostname === 'cdnjs.cloudflare.com') {
+  if (url.origin === location.origin || url.hostname === 'cdnjs.cloudflare.com' || url.hostname === 'unpkg.com' || url.hostname === 'fonts.gstatic.com') {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(r => {
       if (r.ok) { const copy = r.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
       return r;
