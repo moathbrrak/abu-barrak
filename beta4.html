@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://api.rainviewer.com" crossorigin>
 <link rel="preconnect" href="https://tilecache.rainviewer.com" crossorigin>
 <link rel="preconnect" href="https://view.eumetsat.int" crossorigin>
-<link rel="preconnect" href="https://server.arcgisonline.com" crossorigin>
+<link rel="preconnect" href="https://tiles.maps.eox.at" crossorigin>
 <link rel="preconnect" href="https://unpkg.com" crossorigin>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@200;300;400;600;700&display=swap" rel="stylesheet">
@@ -369,7 +369,7 @@
         <div class="sub" id="rNote"></div>
       </section>
       <div class="card" id="notesList" style="display:none"></div>
-      <footer>البيانات: Open-Meteo (ECMWF · GFS · ICON) · رادار RainViewer · أقمار EUMETSAT · خرائط Esri</footer>
+      <footer>البيانات: Open-Meteo (ECMWF · GFS · ICON) · رادار RainViewer · أقمار EUMETSAT · خرائط EOX و OpenStreetMap</footer>
     </div>
     <div class="pane" id="p-fc" hidden><section class="card"><div class="seg" id="fcSeg"><button data-f="d" class="on">3 أيام</button><button data-f="h">24 ساعة</button></div><div id="fcBox"></div></section></div>
     <div class="pane" id="p-al" hidden><div id="alLive"></div><div id="alBox"></div><div class="sub" style="text-align:center;margin-top:6px">التنبيهات محسوبة من النماذج الثلاثة + القمر الصناعي لموقع المدينة المختارة</div></div>
@@ -1029,11 +1029,13 @@ function updateLabels(){
 // خلفية ← تلوين الثيم ← سحب ← تغطية ← مطر القمر ← رادار ← عواصف ← برق ← أسماء
 const ANCHORS = ['a-ir','a-cov','a-sat','a-rad','a-rdt','a-li','a-labels'];
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
-const DARK = ESRI+'Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+// خرائط EOX (تعمل من شبكات ما يوصلها Esri) — نغمّقها بإعدادات الرسم بدل خرائط داكنة جاهزة
+const EOX = 'https://tiles.maps.eox.at/wmts/1.0.0/';
+const eox = (layer, ext='jpg') => `${EOX}${layer}/default/g/{z}/{y}/{x}.${ext}`;
 const BASES = {
-  dark:   {name:'🌑 داكنة', under:[{u:DARK}], over:[], max:16, tint:.30, attr:'© Esri'},
-  terrain:{name:'⛰️ تضاريس', under:[{u:DARK},{u:ESRI+'Elevation/World_Hillshade_Dark/MapServer/tile/{z}/{y}/{x}', op:.55}], over:[], max:16, tint:.34, attr:'© Esri'},
-  sat:    {name:'🛰️ قمر صناعي', under:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}'}], over:[{u:ESRI+'Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', op:.7, minz:8},{u:ESRI+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', minz:9}], max:17, tint:0, labelsMax:9.2, attr:'© Esri, Maxar, Earthstar'},
+  dark:   {name:'🌑 داكنة', under:[{u:eox('terrain-light_3857'), paint:{'raster-saturation':-1,'raster-brightness-max':.30,'raster-contrast':.15}}], over:[], max:16, tint:.30, attr:'Terrain © EOX, OSM'},
+  terrain:{name:'⛰️ تضاريس', under:[{u:eox('terrain_3857'), paint:{'raster-saturation':-.35,'raster-brightness-max':.55,'raster-contrast':.1}}], over:[], max:16, tint:.30, attr:'Terrain © EOX, OSM'},
+  sat:    {name:'🛰️ قمر صناعي', under:[{u:eox('s2cloudless-2024_3857')}], over:[{u:eox('overlay_base_bright_3857','png'), minz:8}], max:15, tint:0, labelsMax:8.5, attr:'Sentinel-2 cloudless © EOX'},
   osm:    {name:'🗺️ تفصيلية', under:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'}], over:[], max:17, tint:0, labelsMax:0, attr:'© OpenStreetMap'},
 };
 let baseKey = null, baseIds = [];
@@ -1042,7 +1044,7 @@ function addRaster(id, url, before, opt={}){
   if(map.getLayer(id)) map.removeLayer(id);
   if(map.getSource(id)) map.removeSource(id);
   map.addSource(id, rasterSrc(url, opt));
-  const L = {id, type:'raster', source:id, paint:{'raster-opacity':opt.opacity??1, 'raster-fade-duration':opt.fade??0}};
+  const L = {id, type:'raster', source:id, paint:{'raster-opacity':opt.opacity??1, 'raster-fade-duration':opt.fade??0, ...(opt.paint||{})}};
   if(opt.minzoom) L.minzoom = opt.minzoom;
   map.addLayer(L, before);
 }
@@ -1052,8 +1054,8 @@ function setBase(k){
   if(!BASES[k]) k = 'dark';
   baseIds.forEach(dropRaster); baseIds = [];
   const b = BASES[k];
-  b.under.forEach((x,i)=>{ const id='base-u'+i; addRaster(id, x.u, 'tint', {maxzoom:b.max, attr:i?'':b.attr, fade:150, opacity:x.op??1}); baseIds.push(id); });
-  b.over.forEach((x,i)=>{ const id='base-o'+i; addRaster(id, x.u, 'a-labels', {maxzoom:b.max, opacity:x.op??1, fade:150, minzoom:x.minz}); baseIds.push(id); });
+  b.under.forEach((x,i)=>{ const id='base-u'+i; addRaster(id, x.u, 'tint', {maxzoom:b.max, attr:i?'':b.attr, fade:150, opacity:x.op??1, paint:x.paint}); baseIds.push(id); });
+  b.over.forEach((x,i)=>{ const id='base-o'+i; addRaster(id, x.u, 'a-labels', {maxzoom:b.max, opacity:x.op??1, fade:150, minzoom:x.minz, paint:x.paint}); baseIds.push(id); });
   baseKey = k; ls.set('base', k);
   setTint(); updateLabels(); renderMenu();
 }
