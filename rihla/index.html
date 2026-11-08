@@ -53,6 +53,10 @@
   #sheet{position:fixed;left:0;right:0;bottom:0;height:88vh;z-index:6;background:var(--sign);border-radius:22px 22px 0 0;box-shadow:0 -12px 30px rgba(0,0,0,.35);display:flex;flex-direction:column;transform:translateY(60vh);transition:transform .42s var(--ease);will-change:transform}
   #sheet:before{content:"";position:absolute;inset:7px 7px -10px;border:2px solid rgba(255,255,255,.9);border-radius:16px 16px 0 0;pointer-events:none}
   #sheet.drag{transition:none}
+  #sheet.ghost{opacity:.18;transition:transform .42s var(--ease),opacity .2s}
+  #sheet{transition:transform .42s var(--ease),opacity .35s}
+  #side,#tripBtn{transition:opacity .35s}
+  body.ghosting #side,body.ghosting #tripBtn{opacity:.35}
   #grab{padding:12px 24px 2px;touch-action:none;position:relative}
   #grab:before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:rgba(255,255,255,.4);margin:0 auto 12px}
   #sum{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
@@ -325,7 +329,7 @@ const eox = (l, ext='jpg') => `${EOX}${l}/default/g/{z}/{y}/{x}.${ext}`;
 const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
 const LBL = {u:eox('overlay_base_bright_3857','png'), max:16};
 const BASES = {
-  sat:    {name:'قمر صناعي', layers:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', max:19}, LBL], attr:'Imagery © Esri, Maxar · © OSM, EOX', thumb:ESRI+'World_Imagery/MapServer/tile/7/56/77'},
+  sat:    {name:'قمر صناعي', layers:[{u:ESRI+'World_Imagery/MapServer/tile/{z}/{y}/{x}', max:17}, LBL], attr:'Imagery © Esri, Maxar · © OSM, EOX', thumb:ESRI+'World_Imagery/MapServer/tile/7/56/77'},
   sat2:   {name:'قمر صناعي (بديل)', layers:[{u:eox('s2cloudless-2024_3857'), max:15, paint:{'raster-contrast':.15}}, LBL], attr:'Sentinel-2 cloudless © EOX, © OSM', thumb:EOX+'s2cloudless-2024_3857/default/g/7/56/77.jpg'},
   osm:    {name:'شوارع', layers:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', max:19}], attr:'© OpenStreetMap', thumb:'https://tile.openstreetmap.org/7/77/56.png'},
   terrain:{name:'تضاريس', layers:[{u:eox('terrain_3857'), max:16}], attr:'Terrain © EOX, © OSM', thumb:EOX+'terrain_3857/default/g/7/56/77.jpg'},
@@ -848,7 +852,10 @@ $('#addBtn').onclick = ()=>{ openOv('addOv'); };
 // ================= سحب اللوحة =================
 const sheet = $('#sheet');
 const H = () => window.innerHeight*0.88;
-const SNAP = () => [H()-150, H()-Math.min(360, window.innerHeight*0.45), 0]; // صغيرة / وسط / كاملة
+const sbProbe = Object.assign(document.createElement('div'), {style:'position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none'});
+document.body.appendChild(sbProbe);
+const sbH = () => sbProbe.offsetHeight || 0;
+const SNAP = () => [H()-(86+sbH()), H()-Math.min(360, window.innerHeight*0.45), 0]; // صغيرة / وسط / كاملة
 let snapI = ls.get('snap', 1);
 function setSnap(i, anim=true){ snapI=i; sheet.classList.toggle('drag', !anim); sheet.style.transform = `translateY(${SNAP()[i]}px)`; ls.set('snap', i); }
 function sheetVisible(){ return Math.round(H() - SNAP()[snapI]); }
@@ -856,7 +863,7 @@ setSnap(snapI, false);
 let dY=null, dBase=0, dLast=0, dV=0, dT=0;
 const grab = $('#grab');
 grab.addEventListener('touchstart', e=>{ dY=e.touches[0].clientY; dBase=SNAP()[snapI]; dLast=dY; dT=performance.now(); dV=0; sheet.classList.add('drag'); }, {passive:true});
-grab.addEventListener('touchmove', e=>{ if(dY==null) return; const y=e.touches[0].clientY; const now=performance.now(); dV=(y-dLast)/Math.max(1,now-dT); dLast=y; dT=now; const v=Math.max(0, Math.min(H()-80, dBase + y - dY)); sheet.style.transform=`translateY(${v}px)`; }, {passive:true});
+grab.addEventListener('touchmove', e=>{ if(dY==null) return; const y=e.touches[0].clientY; const now=performance.now(); dV=(y-dLast)/Math.max(1,now-dT); dLast=y; dT=now; const v=Math.max(0, Math.min(H()-(60+sbH()), dBase + y - dY)); sheet.style.transform=`translateY(${v}px)`; }, {passive:true});
 grab.addEventListener('touchend', ()=>{
   if(dY==null) return; sheet.classList.remove('drag');
   const moved = dLast - dY;
@@ -870,6 +877,18 @@ grab.addEventListener('touchend', ()=>{
 grab.addEventListener('click', e=>{ if(!('ontouchstart' in window)) setSnap(snapI===2?1:snapI+1); });
 window.addEventListener('resize', ()=>setSnap(snapI, false));
 
+// اللوحة تصير شفافة وأنت تلمس الخريطة، وترجع بعد ما توقف
+let ghostT;
+function ghost(on){
+  clearTimeout(ghostT);
+  if(on){ sheet.classList.add('ghost'); sheet.style.pointerEvents='none'; document.body.classList.add('ghosting'); }
+  else ghostT = setTimeout(()=>{ sheet.classList.remove('ghost'); sheet.style.pointerEvents=''; document.body.classList.remove('ghosting'); }, 450);
+}
+const mapEl = map.getCanvasContainer();
+mapEl.addEventListener('touchstart', ()=>ghost(true), {passive:true});
+mapEl.addEventListener('mousedown', ()=>ghost(true));
+['touchend','touchcancel','mouseup'].forEach(ev=>mapEl.addEventListener(ev, ()=>{ if(!map.isMoving()) ghost(false); }, {passive:true}));
+map.on('moveend', ()=>ghost(false));
 // ================= البداية =================
 importHash();
 $('#tripName').textContent = T().name;
