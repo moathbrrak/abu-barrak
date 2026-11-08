@@ -245,6 +245,20 @@
   .ages span{background:var(--card);border:1px solid var(--gb);border-radius:10px;padding:3px 8px;font-size:11.5px;color:var(--mut)}
   .ages b{color:var(--tx);font-weight:600}
   .ages .old{color:var(--warn)}
+  .trhead{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+  .trhead select{flex:1;min-width:0;background:var(--card2);color:var(--tx);border:1px solid var(--gb);border-radius:12px;padding:9px 10px;font:inherit;font-size:15px}
+  .trstop{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--gb)}
+  .trstop:last-child{border-bottom:0}
+  .trn{flex:none;width:26px;height:26px;border-radius:8px;background:var(--acc);color:var(--acc-tx);display:grid;place-items:center;font-weight:700;font-size:13px}
+  .trb{flex:1;min-width:0}
+  .trb b{font-size:15px}
+  .trb p{color:var(--mut);font-size:12.5px;margin:2px 0 0;white-space:pre-wrap}
+  .trdays{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  .trday{font-size:12px;padding:3px 8px;border-radius:9px;background:var(--card2);color:var(--mut)}
+  .trday.wet{background:rgba(95,180,255,.18);color:var(--rain);font-weight:600}
+  .trday.storm{background:rgba(255,181,71,.18);color:var(--warn);font-weight:600}
+  .trgo{flex:none;width:38px;height:38px;border-radius:12px;border:1px solid var(--gb);background:var(--card2);font-size:17px}
+  .trpin{width:26px;height:26px;border-radius:8px;background:var(--acc);color:var(--acc-tx);border:2px solid #fff;display:grid;place-items:center;font:700 13px/1 inherit;box-shadow:0 3px 8px rgba(0,0,0,.5)}
   .nitem{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--gb);font-size:14px}
   .nitem div{flex:1}
   .err{background:rgba(255,92,122,.15);border-color:rgba(255,92,122,.45);color:#ffd0d9}
@@ -344,6 +358,7 @@
   <button data-t="fc">التوقعات</button>
   <button data-t="al">التنبيهات<span class="badge" id="alBadge"></span></button>
   <button data-t="pl">الأماكن</button>
+  <button data-t="tr">رحلتي</button>
 </div>
 <div class="menu glass" id="menu"></div>
 
@@ -397,6 +412,7 @@
       <button class="btn" id="gpsAdd" style="width:100%;margin-bottom:10px">📍 أضف موقعي الحالي</button>
       <div id="placesList"></div>
     </div>
+    <div class="pane" id="p-tr" hidden><div id="trBox"></div></div>
   </div>
 </div>
 
@@ -522,6 +538,7 @@ function setPane(k){
   document.querySelectorAll('.pane').forEach(p=>p.hidden = p.id!=='p-'+k);
   $('sheetBody').scrollTop = 0;
   if(k==='pl') renderPlaces();
+  if(k==='tr') renderTrip();
 }
 $('tabs').onclick = e => {
   const b = e.target.closest('button'); if(!b) return;
@@ -1746,6 +1763,94 @@ const Nav = (()=>{
   }
   return {start, stop, get state(){ return S; }};
 })();
+
+
+// =====================================================================
+//  رحلتي: رحلات «مسار» على خريطة المطر (نفس الموقع، فالرحلات مشتركة)
+// =====================================================================
+const TR = { route:null, routeKey:'', marks:[], shown:false, fc:{}, fcKey:'' };
+const trTrips = () => { try{ return JSON.parse(localStorage.getItem('rihla.trips')||'[]'); }catch(e){ return []; } };
+const trCurId = () => { try{ return JSON.parse(localStorage.getItem('rihla.cur')||'null'); }catch(e){ return null; } };
+function trCur(){ const t = trTrips(); return t.find(x=>x.id===trCurId()) || t[0] || null; }
+const AR_DAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+async function trForecast(stops){
+  const key = stops.map(s=>s.lat.toFixed(3)+','+s.lng.toFixed(3)).join(';');
+  if(TR.fcKey===key && TR.fcAt && Date.now()-TR.fcAt < 30*60e3) return TR.fc;
+  const la = stops.map(s=>s.lat.toFixed(4)).join(','), lo = stops.map(s=>s.lng.toFixed(4)).join(',');
+  const j = await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&daily=precipitation_sum,precipitation_probability_max,weather_code&timezone=auto&forecast_days=3`, 12000);
+  TR.fc = Array.isArray(j) ? j : [j]; TR.fcKey = key; TR.fcAt = Date.now();
+  return TR.fc;
+}
+async function renderTrip(){
+  const box = $('trBox'), trips = trTrips(), t = trCur();
+  if(!t || !t.stops || !t.stops.length){
+    box.innerHTML = `<section class="card"><div class="ctitle">🧳 رحلتي</div><p class="sub" style="font-size:14px;line-height:1.8">ما عندك رحلة فيها وقفات. خطط رحلتك في «مسار»، وترجع هنا تشوف المطر على كل وقفة وتشوف الطريق فوق الرادار.</p><button class="btn primary" style="width:100%;margin-top:10px" onclick="location.href='rihla/'">🗺️ افتح مسار</button></section>`;
+    return;
+  }
+  const opts = trips.map(x=>`<option value="${x.id}" ${x.id===t.id?'selected':''}>${esc(x.name)} (${x.stops.length})</option>`).join('');
+  box.innerHTML = `<div class="trhead"><select id="trSel">${opts}</select><button class="btn" id="trEdit">✏️ عدّل</button></div>
+    <div class="row" style="margin-bottom:10px"><button class="btn primary" id="trShow" style="flex:1">${TR.shown?'🙈 اخفِ الرحلة من الخريطة':'🗺️ اعرض الرحلة على الخريطة'}</button></div>
+    <section class="card"><div class="ctitle">🌧️ المطر على وقفاتك (3 أيام)</div><div id="trList"><p class="sub">أجيب التوقعات…</p></div></section>`;
+  $('trSel').onchange = e=>{ localStorage.setItem('rihla.cur', JSON.stringify(e.target.value)); TR.routeKey=''; renderTrip(); if(TR.shown) trDraw(); };
+  $('trEdit').onclick = ()=>{ location.href = 'rihla/'; };
+  $('trShow').onclick = ()=>{ TR.shown ? trHide() : (trDraw(), openSheet(false)); renderTrip(); };
+  let fc = null; try{ fc = await trForecast(t.stops); }catch(e){}
+  const today = new Date();
+  $('trList').innerHTML = t.stops.map((s,i)=>{
+    let days = '';
+    const f = fc && fc[i] && fc[i].daily;
+    if(f) days = f.time.map((d,k)=>{
+      const mm = f.precipitation_sum[k]||0, pr = f.precipitation_probability_max[k]||0, wc = f.weather_code[k]||0;
+      const dn = k===0 ? 'اليوم' : k===1 ? 'بكرة' : AR_DAYS[new Date(d+'T12:00').getDay()];
+      const cls = wc>=95 ? 'storm' : (mm>=RAIN_MM || pr>=40) ? 'wet' : '';
+      return `<span class="trday ${cls}">${dn}: ${mm>=RAIN_MM ? (wc>=95?'⛈️ ':'🌧️ ')+mm.toFixed(1)+' مم' : '☀️ صحو'}${pr?` · ${pr}%`:''}</span>`;
+    }).join('');
+    else days = '<span class="trday">ما قدرت أجيب التوقعات</span>';
+    return `<div class="trstop"><div class="trn">${i+1}</div><div class="trb"><b>${esc(s.name||'وقفة')}</b>${s.note?`<p>${esc(s.note)}</p>`:''}<div class="trdays">${days}</div></div><button class="trgo" data-tgo="${i}" title="خذني لها">🧭</button></div>`;
+  }).join('');
+  $('trList').onclick = e=>{ const b = e.target.closest('[data-tgo]'); if(!b) return; const s = t.stops[+b.dataset.tgo]; openNav(s.lat, s.lng); };
+}
+async function trDraw(){
+  const t = trCur(); if(!t || !map) return; await mapReady;
+  TR.marks.forEach(m=>m.remove()); TR.marks = [];
+  t.stops.forEach((s,i)=>{
+    const el = document.createElement('div'); el.className='trpin'; el.textContent = i+1;
+    TR.marks.push(new maplibregl.Marker({element:el}).setLngLat([s.lng,s.lat])
+      .setPopup(new maplibregl.Popup({offset:14}).setHTML(`<b>${i+1}. ${esc(s.name||'وقفة')}</b>${s.note?`<br><span style="opacity:.7">${esc(s.note)}</span>`:''}<br>${navLink(s.lat,s.lng)}`)).addTo(map));
+  });
+  if(!map.getSource('trip-route')){
+    map.addSource('trip-route', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
+    map.addLayer({id:'trip-route-case', type:'line', source:'trip-route', layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#000','line-width':8,'line-opacity':.5}});
+    map.addLayer({id:'trip-route', type:'line', source:'trip-route', layout:{'line-join':'round','line-cap':'round'}, paint:{'line-color':'#ffd166','line-width':4}});
+  }
+  const pts = t.stops.map(s=>[s.lng,s.lat]); if(t.loop && pts.length>1) pts.push(pts[0]);
+  const key = pts.map(p=>p.join(',')).join(';');
+  if(TR.routeKey !== key){
+    TR.routeKey = key; TR.route = pts;
+    if(pts.length>1){
+      try{
+        const co = [];
+        for(let i=0;i<pts.length-1;i+=60){
+          const part = pts.slice(i, Math.min(i+61, pts.length));
+          const j = await getJSON(`https://router.project-osrm.org/route/v1/driving/${part.map(p=>p.join(',')).join(';')}?overview=full&geometries=geojson`, 15000);
+          if(j.code!=='Ok') throw 0; co.push(...j.routes[0].geometry.coordinates);
+        }
+        TR.route = co;
+      }catch(e){}
+    }
+  }
+  map.getSource('trip-route').setData({type:'FeatureCollection', features: TR.route.length>1 ? [{type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:TR.route}}] : []});
+  const b = new maplibregl.LngLatBounds(); pts.forEach(p=>b.extend(p));
+  map.fitBounds(b, {padding:mapPad(), maxZoom:11, duration:800});
+  TR.shown = true;
+}
+function trHide(){
+  TR.marks.forEach(m=>m.remove()); TR.marks = [];
+  if(map && map.getSource('trip-route')) map.getSource('trip-route').setData({type:'FeatureCollection', features:[]});
+  TR.shown = false;
+}
+// فتح «رحلتي» مباشرة لما ترجع من مسار
+if(/[?&]tab=tr/.test(location.search)){ setTimeout(()=>{ setPane('tr'); openSheet(true); }, 400); }
 
 async function shareGpx(la, lo, snap){
   const t = new Date().toISOString();
