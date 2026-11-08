@@ -1038,8 +1038,8 @@ const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/';
 const EOX = 'https://tiles.maps.eox.at/wmts/1.0.0/';
 const eox = (layer, ext='jpg') => `${EOX}${layer}/default/g/{z}/{y}/{x}.${ext}`;
 const BASES = {
-  dark:   {name:'🌑 داكنة', under:[{u:eox('terrain-light_3857'), paint:{'raster-saturation':-1,'raster-brightness-max':.30,'raster-contrast':.15}}], over:[], max:16, tint:.30, attr:'Terrain © EOX, OSM'},
-  terrain:{name:'⛰️ تضاريس', under:[{u:eox('terrain_3857'), paint:{'raster-saturation':-.35,'raster-brightness-max':.55,'raster-contrast':.1}}], over:[], max:16, tint:.30, attr:'Terrain © EOX, OSM'},
+  dark:   {name:'🌑 داكنة', under:[{u:eox('terrain-light_3857'), paint:{'raster-saturation':-1,'raster-brightness-max':.5,'raster-brightness-min':.02,'raster-contrast':.35}}], over:[], max:16, tint:.22, attr:'Terrain © EOX, OSM'},
+  terrain:{name:'⛰️ تضاريس', under:[{u:eox('terrain_3857'), paint:{'raster-saturation':-.2,'raster-brightness-max':.7,'raster-contrast':.15}}], over:[], max:16, tint:.30, attr:'Terrain © EOX, OSM'},
   sat:    {name:'🛰️ قمر صناعي', under:[{u:eox('s2cloudless-2024_3857')}], over:[{u:eox('overlay_base_bright_3857','png'), minz:8}], max:15, tint:0, labelsMax:8.5, attr:'Sentinel-2 cloudless © EOX'},
   osm:    {name:'🗺️ تفصيلية', under:[{u:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'}], over:[], max:17, tint:0, labelsMax:0, attr:'© OpenStreetMap'},
 };
