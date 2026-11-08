@@ -1458,7 +1458,7 @@ const Nav = (()=>{
   const ANG = {'straight':0,'slight right':40,'right':90,'sharp right':135,'uturn':180,'sharp left':-135,'left':-90,'slight left':-40};
   const ORD = ['','الأول','الثاني','الثالث','الرابع','الخامس','السادس','السابع','الثامن'];
   function instr(st){
-    const m = st.maneuver, mod = m.modifier||'straight', side = /left/.test(mod)?'يسار':'يمين';
+    const m = st.maneuver, mod = m.modifier||'straight', side = /left/.test(mod)?'يسار':'يمين', sideAl = side==='يسار'?'اليسار':'اليمين';
     const on = st.name ? ' على '+st.name : '';
     switch(m.type){
       case 'depart': return 'انطلق'+on;
@@ -1466,9 +1466,9 @@ const Nav = (()=>{
       case 'roundabout': case 'rotary': case 'roundabout turn':
         return m.exit ? 'في الدوار خذ المخرج '+(ORD[m.exit]||m.exit)+on : 'ادخل الدوار'+on;
       case 'fork': return 'عند التفرع خذ '+(side==='يسار'?'اليسار':'اليمين')+on;
-      case 'on ramp': return 'ادخل المدخل اللي على '+side+on;
-      case 'off ramp': return 'اطلع من المخرج اللي على '+side+on;
-      case 'merge': return 'اندمج '+side+on;
+      case 'on ramp': return 'ادخل المدخل اللي على '+sideAl+on;
+      case 'off ramp': return 'اطلع من المخرج اللي على '+sideAl+on;
+      case 'merge': return 'اندمج على '+sideAl+on;
       case 'continue': case 'new name': return (mod==='straight'?'كمّل سيدا':MOD[mod]||'كمّل')+on;
       default: return (MOD[mod]||'كمّل')+on;
     }
@@ -1616,7 +1616,9 @@ const Nav = (()=>{
       return;
     }
     const steps = S.rt.steps;
-    let k = steps.findIndex((st,i)=>i>0 && st.at > pr.along + 3); if(k<0) k = steps.length-1;
+    // نتجاهل التعليمات اللي ما فيها تغيير فعلي (كمّل سيدا / تغير اسم الشارع)
+    const trivial = st => ['new name','continue','notification'].includes(st.maneuver.type) && /^(straight|slight right|slight left)?$/.test(st.maneuver.modifier||'') || (st.maneuver.type==='fork' && (st.maneuver.modifier||'straight')==='straight');
+    let k = steps.findIndex((st,i)=>i>0 && st.at > pr.along + 3 && !trivial(st)); if(k<0) k = steps.length-1;
     const st = steps[k], d = st.at - pr.along, txt = instr(st);
     el('nhIco').innerHTML = iconFor(st);
     el('nhD').textContent = fmtD(d);
