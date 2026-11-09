@@ -58,8 +58,8 @@
   #hz{display:none}
   button,a,[role=button],[role=slider]{touch-action:manipulation}
   /* لما تلمس الخريطة، الواجهة تصير شفافة وتطلع لك الخريطة كاملة */
-  #hzTop,#hzLayers,#hzBot{transition:opacity .28s var(--ease-out)}
-  body.hz-ghost #hzTop,body.hz-ghost #hzLayers,body.hz-ghost #hzBot{opacity:.12;pointer-events:none;transition:opacity .14s ease}
+  #hzTop,#hzLayers,#hzBot{transition:opacity .8s cubic-bezier(.4,0,.2,1)}
+  body.hz-ghost #hzTop,body.hz-ghost #hzLayers,body.hz-ghost #hzBot{opacity:.12;pointer-events:none;transition:opacity .5s cubic-bezier(.4,0,.2,1)}
   body.hz #hz{display:block}
   body.hz.hz-open #hz{display:none}
   /* أشياء الواجهة القديمة اللي كانت تطلع فوق الأفق */
@@ -130,8 +130,8 @@
   .maplibregl-map{background:var(--bg)}
   .maplibregl-ctrl-bottom-left,.maplibregl-ctrl-bottom-right{bottom:var(--vis,var(--peek));transition:bottom .25s var(--ease-out)}
   .maplibregl-ctrl-attrib{font-size:9px;opacity:.6}
-  .maplibregl-popup-content{direction:rtl;text-align:right;font-family:inherit;background:var(--sheet);color:var(--tx);border:1px solid var(--gb);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-  .maplibregl-popup-tip{border-top-color:var(--sheet)!important;border-bottom-color:var(--sheet)!important}
+  body .maplibregl-popup-content{direction:rtl;text-align:right;font-family:inherit;background:var(--sheet);color:var(--tx);border:1px solid var(--gb);border-radius:14px;padding:10px 12px;font-size:14px;line-height:1.6;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  body .maplibregl-popup-tip{border-top-color:var(--sheet)!important;border-bottom-color:var(--sheet)!important}
   #navOv{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);display:none;align-items:flex-end}
   #navOv.on{display:flex}
   .nvs{width:100%;max-height:88vh;overflow-y:auto;background:var(--sheet);border-top:1px solid var(--gb);border-radius:20px 20px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 18px);animation:nvUp .38s var(--ease-drawer)}
@@ -145,8 +145,11 @@
   .nvb small{color:var(--mut);font-size:12.5px}
   .nvb.main{background:var(--acc);border-color:transparent;color:var(--acc-tx);font-weight:600}
   .nvb.main small{color:inherit;opacity:.8;font-weight:400}
-  .maplibregl-popup-content a.nav{display:inline-block;margin-top:6px;padding:5px 10px;border-radius:10px;background:var(--acc);color:var(--acc-tx);text-decoration:none;font-weight:600}
-  .maplibregl-popup-close-button{color:var(--mut);font-size:18px;left:4px;right:auto}
+  body .maplibregl-popup-content{padding:14px 16px;border-radius:16px;min-width:180px}
+  body .maplibregl-popup-content b{font-weight:600}
+  body .maplibregl-popup-content a.nav{display:inline-flex;align-items:center;gap:6px;margin-top:10px;height:40px;padding:0 16px;border-radius:20px;background:var(--acc);color:var(--acc-tx);text-decoration:none;font-weight:600}
+  body .maplibregl-popup-close-button{color:var(--mut);font-size:20px;left:6px;right:auto;top:4px;width:28px;height:28px;border-radius:14px;background:transparent}
+  body .maplibregl-popup-close-button:hover{background:var(--card2)}
   /* أسماء عربية على الخريطة */
   .ml{direction:rtl;white-space:nowrap;pointer-events:none;font-family:"Readex Pro","IBM Plex Sans Arabic",sans-serif;text-shadow:0 1px 2px #000,0 0 3px #000;transition:opacity .2s}
   #map.moving .ml{opacity:0;transition:none}
@@ -1246,7 +1249,11 @@ async function offBlob(){ try{ const c = await caches.open(OFF_CACHE); const r =
 async function offInit(){
   if(OFF.ready || !window.pmtiles) return OFF.ready;
   const blob = await offBlob();
-  if(blob) OFF.local = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob], 'ksa-base.pmtiles')));
+  if(blob){
+    OFF.local = new pmtiles.PMTiles(new pmtiles.FileSource(new File([blob], 'ksa-base.pmtiles')));
+    // لو الملف المحفوظ خربان نحذفه، وينحمّل من جديد
+    try{ await OFF.local.getHeader(); }catch(e){ OFF.local = null; try{ (await caches.open(OFF_CACHE)).delete(MAP_HOST+'/ksa-base.pmtiles'); }catch(_){} }
+  }
   OFF.remote = new pmtiles.PMTiles(MAP_HOST + '/ksa.pmtiles');
   // لو ما فيه خريطة محفوظة ولا نقدر نوصل للخريطة على النت، نرجع لصور القمر
   if(!OFF.local){
@@ -1293,7 +1300,20 @@ async function offArea(onProg, cancel){
 // طبقات الخريطة المرسومة (بالعربي) من Protomaps
 function offLayers(flavor){
   if(!window.basemaps) return [];
-  try{ return basemaps.layers('ksa', basemaps.namedFlavor(flavor), {lang:'ar'}); }catch(e){ return []; }
+  try{
+    let f = basemaps.namedFlavor(flavor);
+    // ألوان «الأفق»: أرض داكنة مزرقة، بحر أعمق، وطرق وأسماء أوضح من النسخة الأصلية
+    if(flavor==='dark') f = {...f,
+      background:'#0B1018', earth:'#121A24', water:'#071722', sand:'#17202B', scrub_a:'#142019', scrub_b:'#142019',
+      park_a:'#13241C', park_b:'#13241C', wood_a:'#13241C', wood_b:'#13241C',
+      boundaries:'#4A5B6E', other:'#26323F', minor_a:'#2A3744', minor_b:'#2A3744', minor_service:'#222D39', link:'#34465A',
+      major:'#3A4C60', highway:'#4E6278', railway:'#2E3A47', buildings:'#18222E',
+      minor_casing:'#0B1018', major_casing_early:'#0B1018', major_casing_late:'#0B1018', highway_casing_early:'#0B1018', highway_casing_late:'#0B1018',
+      city_label:'#E6ECF2', city_label_halo:'#0B1018', subplace_label:'#AFC0CF', subplace_label_halo:'#0B1018', state_label:'#7F92A6', state_label_halo:'#0B1018',
+      roads_label_minor:'#93A4B5', roads_label_minor_halo:'#0B1018', roads_label_major:'#B4C3D1', roads_label_major_halo:'#0B1018',
+      ocean_label:'#4E7590', peak_label:'#C9B98F', waterway_label:'#4E7590', country_label:'#8FA2B4'};
+    return basemaps.layers('ksa', f, {lang:'ar'});
+  }catch(e){ return []; }
 }
 let offIds = [];
 function offApply(on, flavor){
@@ -1309,12 +1329,18 @@ function offApply(on, flavor){
 async function offTool(t){
   const msg = m => { const el = $('offMsg'); if(el) el.textContent = m; };
   if(!OFF.ready){ await offInit().catch(()=>{}); if(!OFF.ready){ msg('مكتبة الخريطة ما تحمّلت، تأكد من النت'); return; } }
+  if(t==='offreset'){
+    msg('أمسح الخريطة القديمة…');
+    try{ await caches.delete(OFF_CACHE); await caches.delete('akhila-r2'); }catch(e){}
+    OFF.local = null; t = 'offdl';
+  }
   if(t==='offdl'){
     if(OFF.local){ msg('الخريطة الأساسية محفوظة، وتشتغل بدون نت.'); return; }
     msg('أحمّل الخريطة…');
     try{
       const size = await offDownload((g,tot)=>msg(tot ? `أحمّل الخريطة… ${Math.round(g/tot*100)}% (${(tot/1048576).toFixed(0)} ميقا)` : `أحمّل… ${(g/1048576).toFixed(1)} ميقا`));
       msg(`انحفظت (${(size/1048576).toFixed(0)} ميقا). الخريطة الحين تشتغل بدون نت.`);
+      if(map.getSource('ksa')){ offApply(false); map.removeSource('ksa'); }
       if(BASES[baseKey].vector) setBase(baseKey); renderMenu();
     }catch(e){ msg('ما قدرت أحمّلها: '+(e.message||e)+'. ممكن الخريطة لسا ما ارتفعت.'); }
   } else {
@@ -1385,6 +1411,7 @@ function renderMenu(){
     <h4>بدون نت</h4><div class="mg">
       <button data-tool="offdl">${OFF.local ? '✓ الخريطة محفوظة في جوالك' : '⬇︎ احفظ خريطة المملكة في جوالك'}</button>
       <button data-tool="offarea">⬇︎ احفظ تفاصيل المنطقة الظاهرة</button>
+      <button data-tool="offreset">⟳ أعد تحميل الخريطة من جديد</button>
     </div><div class="sub" id="offMsg" style="margin:-4px 2px 8px"></div>
     <h4>الثيم</h4><div class="mg">${Object.entries(THEMES).map(([k,v])=>`<button data-th="${k}" class="${theme===k?'on':''}"><span class="sw" style="background:${v.sw}"></span>${v.name}</button>`).join('')}</div>
     <h4>أدوات</h4><div class="mg">
@@ -1404,7 +1431,7 @@ $('menu').onclick = e => {
   else if(b.dataset.tool){
     $('menu').classList.remove('show');
     const t = b.dataset.tool;
-    if(t==='offdl' || t==='offarea'){ $('menu').classList.add('show'); offTool(t); return; }
+    if(t==='offdl' || t==='offarea' || t==='offreset'){ $('menu').classList.add('show'); offTool(t); return; }
     if(t==='note') setNoteMode(!noteMode);
     if(t==='notes'){ setPane('now'); $('notesList').style.display='block'; renderNotes(); openSheet(true); setTimeout(()=>$('notesList').scrollIntoView({behavior:'smooth'}),380); }
     if(t==='ksa' && map) map.fitBounds([[34.5,16],[55.7,32.3]], {padding:mapPad(), duration:600});
@@ -2371,7 +2398,7 @@ const EI = (() => {
   function fix(node){
     // اللي داخل الخريطة (علامات وكتابة) ما نمسحه: يخفف الشغل وقت تحريك الخريطة
     const host = node.nodeType===1 ? node : node.parentElement;
-    if(host && host.closest && host.closest('#map')) return;
+    if(host && host.closest && host.closest('#map') && !host.closest('.maplibregl-popup')) return;
     if(node.nodeType===3){
       const t = node.nodeValue; RE.lastIndex = 0;
       if(!RE.test(t)) return;
@@ -2570,7 +2597,7 @@ const HZ = (() => {
     // نربط الشفافية أول ما تجهز الخريطة
     const hook = ()=>{
       if(!map){ setTimeout(hook, 500); return; }
-      let gT; const ghost = on=>{ clearTimeout(gT); if(on) document.body.classList.add('hz-ghost'); else gT = setTimeout(()=>document.body.classList.remove('hz-ghost'), 450); };
+      let gT; const ghost = on=>{ clearTimeout(gT); if(on) document.body.classList.add('hz-ghost'); else gT = setTimeout(()=>document.body.classList.remove('hz-ghost'), 900); };
       const c = map.getCanvasContainer();
       c.addEventListener('touchstart', ()=>ghost(true), {passive:true});
       c.addEventListener('mousedown', ()=>ghost(true));
