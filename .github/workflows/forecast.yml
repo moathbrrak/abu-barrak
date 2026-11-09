@@ -1,0 +1,24 @@
+# كل 6 ساعات: توقع المطر لشبكة السعودية، ويرفعه لـ Cloudflare R2 (fc.json)
+name: forecast
+on:
+  schedule: [{cron: '17 */6 * * *'}]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tools/forecast-run.txt', 'tools/forecast_grid.py']
+jobs:
+  grid:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: https://${{ secrets.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+    steps:
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: tools }
+      - run: python3 tools/forecast_grid.py
+      - run: |
+          gzip -9 -k fc.json; ls -la fc.json*
+          aws s3 cp fc.json s3://akhila-maps/fc.json --endpoint-url "$R2_ENDPOINT" --content-type application/json --cache-control "max-age=600" --only-show-errors
