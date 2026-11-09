@@ -28,6 +28,14 @@
     --rain:#5fb4ff; --warn:#ffb547; --bad:#ff5c7a; --ok:#58d68d;
     --top:calc(env(safe-area-inset-top) + 94px); --peek:300px;
   }
+  [data-theme=horizon]{
+    --bg:#0B1018; --glass:rgba(13,19,28,.92); --sheet:#0E141D; --gb:#1E2A36;
+    --card:#131B26; --card2:#1A2431;
+    --tx:#EEF2F6; --mut:#8FA2B4; --acc:#3FD1C2; --acc2:#2BB3A6; --acc-tx:#062521; --glow:rgba(63,209,194,.4);
+    --rain:#3FD1C2; --warn:#FFB547; --bad:#FF6B6B; --ok:#58D68D;
+  }
+  [data-theme=horizon] .glass{box-shadow:0 8px 24px rgba(0,0,0,.45)}
+  [data-theme=horizon] #sheet{border-top:1px solid #1E2A36}
   [data-theme=green]{
     --bg:#0b140f; --glass:rgba(14,30,21,.88); --sheet:rgba(10,22,15,.97); --gb:rgba(255,255,255,.10);
     --tx:#eefbe9; --mut:#94ad9c; --acc:#b9f26b; --acc2:#3fbf7f; --acc-tx:#0b140f; --glow:rgba(185,242,107,.5);
@@ -36,7 +44,7 @@
   html,body{height:100%;overflow:hidden;background:var(--bg)}
   @font-face{font-family:"Reem Kufi";src:url(rihla/fonts/reemkufi.woff) format("woff");font-weight:400 700;font-display:swap}
   @font-face{font-family:"Readex Pro";src:url(rihla/fonts/readex.woff) format("woff");font-weight:160 700;font-display:swap}
-  #hCity,#nhD{font-family:"Reem Kufi","Readex Pro",sans-serif}
+  #nhD{font-family:"Readex Pro",sans-serif;font-weight:700}
   body{font-family:"Readex Pro","IBM Plex Sans Arabic",-apple-system,"SF Arabic","Segoe UI",Tahoma,sans-serif;color:var(--tx);line-height:1.55;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
   input,textarea{-webkit-user-select:text;user-select:text}
   button{font-family:inherit;color:inherit}
@@ -75,14 +83,25 @@
   #hzLayers button.on{background:var(--hz-tx);color:var(--hz-ink);border-color:transparent;font-weight:600}
   #hzLayers button:active{transform:scale(.97)}
   #hzBot{position:fixed;left:0;right:0;bottom:0;z-index:19;padding:34px 20px calc(env(safe-area-inset-bottom) + 18px);background:linear-gradient(to top,var(--hz-ink) 72%,rgba(11,16,24,0));display:flex;flex-direction:column;gap:10px;cursor:pointer}
-  #hzRow{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  #hzRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
   #hzCity{font-family:"Readex Pro",sans-serif;font-weight:600;font-size:20px;color:#F4F7FA;white-space:nowrap}
   #hzCap{font-size:12.5px;color:var(--hz-mut);text-align:left}
-  #hzBars{position:relative;height:60px;display:flex;align-items:flex-end;gap:3px}
+  #hzWhen{flex:1;font-size:13px;color:var(--hz-mut);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #hzWhen b{color:#F4F7FA;font-weight:600}
+  #hzPlay{height:36px;width:36px;min-width:36px}
+  #hzPlay.on{background:var(--hz-teal);color:#062521;border-color:transparent}
+  #hzTrack{display:flex;gap:10px;align-items:flex-end;height:64px}
+  #hzPast{position:relative;flex:0 0 38%;height:64px;touch-action:none;cursor:ew-resize;border-radius:10px;background:rgba(255,255,255,.04)}
+  #hzTicks{position:absolute;inset:10px 8px;display:flex;align-items:flex-end;gap:2px}
+  #hzTicks span{flex:1;height:30%;border-radius:2px;background:#2A3846}
+  #hzTicks span.rad{height:55%;background:#3E5568} #hzTicks span.on{background:var(--hz-teal)}
+  #hzThumb{position:absolute;top:2px;bottom:2px;width:4px;margin-left:-2px;border-radius:2px;background:#F4F7FA;box-shadow:0 0 0 4px rgba(63,209,194,.25);transition:left .12s var(--ease-out)}
+  #hzPast.drag #hzThumb{transition:none}
+  #hzBars{position:relative;flex:1;height:60px;display:flex;align-items:flex-end;gap:3px}
   #hzBars span{flex:1;border-radius:3px;background:#1E2A36;min-height:4px;transition:height .35s var(--ease-out),background-color .3s ease}
   #hzBars span.r{background:var(--hz-teal)} #hzBars span.s{background:var(--hz-amber)}
   #hzNow{position:absolute;top:-6px;bottom:-6px;width:2px;background:#F4F7FA;border-radius:1px}
-  #hzHours{display:flex;justify-content:space-between;font-size:12px;color:var(--hz-mut);font-variant-numeric:tabular-nums}
+  #hzHours{display:flex;gap:10px;font-size:12px;color:var(--hz-mut);font-variant-numeric:tabular-nums}
   #hzHours b{color:#F4F7FA;font-weight:600}
   #hzMore{display:flex;justify-content:center;margin-top:2px}
   #hzMore span{width:38px;height:4px;border-radius:2px;background:#3A4A5A}
@@ -243,7 +262,9 @@
   .bub{position:absolute;top:-20px;transform:translateX(-50%);background:var(--acc);color:var(--acc-tx);font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:9px;white-space:nowrap;pointer-events:none;direction:rtl}
   .bub::after{content:'';position:absolute;left:50%;bottom:-4px;margin-left:-4px;border:4px solid transparent;border-bottom:0;border-top-color:var(--acc)}
   .tlrow{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11px;color:var(--mut);margin-top:2px}
-  .live{color:var(--ok);white-space:nowrap}
+  .live{color:var(--ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:0 1 auto}
+  #tlSrc{flex:1 1 auto;min-width:0}
+  .tlrow{flex-wrap:wrap}
   .live::before{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-inline-end:5px;animation:pulse 1.6s ease-in-out infinite}
   .live.warn{color:var(--warn)}
   .live.off{color:var(--mut)} .live.off::before{animation:none}
@@ -420,8 +441,15 @@
   </div>
   <div id="hzLayers"></div>
   <div id="hzBot" role="button" tabindex="0" aria-label="التفاصيل والتوقعات">
-    <div id="hzRow"><span id="hzCity">—</span><span id="hzCap">المطر بالساعة: آخر ساعتين والجاي 12</span></div>
-    <div id="hzBars"></div>
+    <div id="hzRow">
+      <span id="hzCity">—</span>
+      <span id="hzWhen">الحين</span>
+      <button class="hzb ic" id="hzPlay" aria-label="شغّل الرصد"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></button>
+    </div>
+    <div id="hzTrack">
+      <div id="hzPast" aria-label="اسحب لترجع بالرصد" role="slider" tabindex="0"><div id="hzTicks"></div><i id="hzThumb"></i></div>
+      <div id="hzBars"></div>
+    </div>
     <div id="hzHours"></div>
     <div id="hzMore"><span></span></div>
   </div>
@@ -517,12 +545,13 @@ let lastData = null;
 
 // ================= الثيم =================
 const THEMES = {
+  horizon:{name:'الأفق', sw:'linear-gradient(135deg,#3FD1C2,#0B1018)', bg:'#0B1018', tint:'#0B1018', base:'offline'},
   sunset:{name:'غروب', sw:'linear-gradient(135deg,#ff7a59,#a66bff)', bg:'#140f24', tint:'#4a1f7a', base:'sat'},
   green: {name:'أخضر', sw:'linear-gradient(135deg,#b9f26b,#1f7a4a)', bg:'#0b140f', tint:'#14482b', base:'sat'},
 };
-let theme = THEMES[ls.get('theme','sunset')] ? ls.get('theme','sunset') : 'sunset';
+let theme = THEMES[ls.get('theme2','horizon')] ? ls.get('theme2','horizon') : 'horizon';
 function applyTheme(k, changeBase){
-  theme = k; ls.set('theme', k);
+  theme = k; ls.set('theme2', k);
   document.documentElement.dataset.theme = k;
   document.querySelector('meta[name=theme-color]').content = THEMES[k].bg;
   if(map && map.getLayer('tint')){
@@ -1412,8 +1441,10 @@ function show(i){
   fi = Math.max(0, Math.min(i, steps.length-1));
   const t = steps[fi], nt = steps[(fi+1) % steps.length];
   const rp = lyrOn.rad ? radAt(t) : null, sp = lyrOn.sat ? satAt(t) : null;
-  const needR = new Set([rp, lyrOn.rad && timer ? radAt(nt) : null].filter(Boolean));
-  const needS = new Set([sp, lyrOn.sat && timer ? satAt(nt) : null].filter(Boolean));
+  // الرادار: كل الإطارات تبقى محمّلة (مخفية)، فالسحب على الوقت يطلع الصورة على طول
+  const needR = new Set(lyrOn.rad ? steps.map(radAt).filter(Boolean) : []);
+  // القمر الصناعي أثقل: الحالي واللي جنبه بس
+  const needS = new Set(lyrOn.sat ? [-2,-1,0,1,2].map(k=>satAt(steps[Math.max(0,Math.min(steps.length-1,fi+k))])).filter(Boolean) : []);
   for(const p of [...onMap.rad]) if(!needR.has(p)){ dropRaster(rid(p)); onMap.rad.delete(p); }
   for(const p of needR) if(!onMap.rad.has(p)){ addRaster(rid(p), `${rvHost}${p}/256/{z}/{x}/{y}/2/1_1.png`, 'a-rad', {maxzoom:7, opacity:0}); onMap.rad.add(p); }
   for(const p of onMap.rad) map.setPaintProperty(rid(p), 'raster-opacity', p===rp ? 0.8 : 0);
@@ -1425,6 +1456,7 @@ function show(i){
   const ag = Math.round((steps.at(-1)-t)/60000);
   $('rTime').textContent = ag ? new Date(t).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'}) : 'الحين ' + new Date(t).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
   placeBubble();
+  try{ HZ.sync(); }catch(e){}
   $('tlSrc').textContent = `${ag? `قبل ${Math.floor(ag/60)? Math.floor(ag/60)+' س ':''}${ag%60? ag%60+' د':''}` : 'آخر رصد'} · ${rp?'📡 رادار':''}${rp&&sp?' + ':''}${sp?'🛰️ قمر':''}${!rp&&!sp?'ما فيه بيانات لهالوقت':''}${!rp&&lyrOn.rad&&ag>120?' (الرادار يحفظ ساعتين)':''}`;
 }
 function stopPlay(){ clearInterval(timer); timer=null; $('rPlay').textContent='▶'; $('rPlay').classList.remove('on'); if(map && steps.length) show(fi); }
@@ -2448,16 +2480,47 @@ const HZ = (() => {
     if(!d || !d.models || !d.models.hourly){ el('hzBars').innerHTML=''; return; }
     const h = d.models.hourly, now = Date.now();
     let i0 = h.time.findIndex(x=>new Date(x).getTime() > now-3600e3); if(i0<0) i0 = 0;
-    const from = Math.max(0, i0-2), N = 15, vals = [];
+    const from = i0, N = 12, vals = [];
     for(let i=from; i<from+N && i<h.time.length; i++){
       let s=0,k=0,storm=false; MODELS.forEach(m=>{ const v=(h['precipitation_'+m.id]||[])[i]; const cape=(h['cape_'+m.id]||[])[i]; if(v!=null){ s+=v; k++; if(cape>800 && v>=RAIN_MM) storm=true; } });
       vals.push({mm: k ? s/k : 0, storm, t:h.time[i]});
     }
     const mx = Math.max(1.5, ...vals.map(v=>v.mm));
-    el('hzBars').innerHTML = vals.map(v=>`<span class="${v.mm>=RAIN_MM ? (v.storm?'s':'r') : ''}" style="height:${Math.max(4, v.mm/mx*56)}px" title="${fmtH(v.t)}: ${r1(v.mm)} مم"></span>`).join('') + `<i id="hzNow" style="right:calc(${((i0-from)+0.5)/vals.length*100}% - 1px)"></i>`;
+    el('hzBars').innerHTML = vals.map(v=>`<span class="${v.mm>=RAIN_MM ? (v.storm?'s':'r') : ''}" style="height:${Math.max(4, v.mm/mx*56)}px" title="${fmtH(v.t)}: ${r1(v.mm)} مم"></span>`).join('') + `<i id="hzNow" style="right:-6px"></i>`;
     const hr = x => new Date(x).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric'});
-    const pick = [0, i0-from, Math.min(vals.length-1, i0-from+4), Math.min(vals.length-1, i0-from+8), vals.length-1];
-    el('hzHours').innerHTML = pick.map((k,j)=> j===1 ? '<b>الحين</b>' : `<span>${vals[k] ? hr(vals[k].t) : ''}</span>`).join('');
+    el('hzHours').innerHTML = `<span style="flex:0 0 38%;display:flex;justify-content:space-between"><span>قبل ${HOURS} س</span><b>الحين</b></span><span style="flex:1;display:flex;justify-content:space-between"><span>${vals[3]?hr(vals[3].t):''}</span><span>${vals[7]?hr(vals[7].t):''}</span><span>${vals.at(-1)?hr(vals.at(-1).t):''}</span></span>`;
+  }
+  // ---- السحب على الرصد: تختار أي وقت مباشرة بدون تشغيل ----
+  function sync(){
+    const n = steps.length; if(!n) return;
+    const tk = el('hzTicks');
+    if(tk.childElementCount !== n) tk.innerHTML = steps.map(()=>'<span></span>').join('');
+    [...tk.children].forEach((sp,i)=>{ sp.className = (radAt(steps[i]) ? 'rad' : '') + (i===fi ? ' on' : ''); });
+    // في العربي: الأقدم يمين، والحين على اليسار جنب التوقعات
+    const r = el('hzPast').getBoundingClientRect(), pad = 8, w = r.width - pad*2;
+    el('hzThumb').style.left = (pad + (1 - fi/(n-1||1)) * w) + 'px';
+    const t = steps[fi], ag = Math.round((steps.at(-1)-t)/60000);
+    const src = (lyrOn.rad && radAt(t)) ? 'رادار' : (lyrOn.sat && satAt(t)) ? 'قمر صناعي' : 'ما فيه رصد';
+    el('hzWhen').innerHTML = ag ? `قبل ${Math.floor(ag/60)?Math.floor(ag/60)+' س ':''}${ag%60?ag%60+' د':''} · ${new Date(t).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'})} · ${src}` : `<b>الحين</b> · ${src}`;
+    el('hzPlay').classList.toggle('on', !!timer);
+  }
+  function scrubAt(x){
+    const n = steps.length; if(!n) return;
+    const r = el('hzPast').getBoundingClientRect(), pad = 8;
+    const f = Math.max(0, Math.min(1, (r.right - pad - x) / (r.width - pad*2)));
+    const i = Math.round(f*(n-1));
+    if(timer) stopPlay();
+    if(i !== fi) show(i); else sync();
+  }
+  function bindScrub(){
+    const p = el('hzPast');
+    p.addEventListener('click', e=>e.stopPropagation());
+    p.addEventListener('pointerdown', e=>{ e.stopPropagation(); p.setPointerCapture(e.pointerId); p.classList.add('drag'); scrubAt(e.clientX); });
+    p.addEventListener('pointermove', e=>{ if(p.classList.contains('drag')) scrubAt(e.clientX); });
+    const end = ()=>{ p.classList.remove('drag'); sync(); };
+    p.addEventListener('pointerup', end); p.addEventListener('pointercancel', end);
+    p.addEventListener('keydown', e=>{ if(e.key==='ArrowRight'){ show(fi-1); e.preventDefault(); } if(e.key==='ArrowLeft'){ show(fi+1); e.preventDefault(); } });
+    el('hzPlay').addEventListener('click', e=>{ e.stopPropagation(); $('rPlay').click(); sync(); });
   }
   function layers(){
     el('hzLayers').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button data-k="${k}" class="${lyrOn[k]?'on':''}" aria-pressed="${!!lyrOn[k]}">${v.name}</button>`).join('');
@@ -2476,10 +2539,12 @@ const HZ = (() => {
     el('hzBot').onclick = ()=>openDetails('now');
     el('hzBot').onkeydown = e=>{ if(e.key==='Enter') openDetails('now'); };
     el('hzBack').onclick = closeDetails;
+    bindScrub();
+    window.addEventListener('resize', ()=>{ try{ sync(); }catch(e){} });
     setInterval(scan, 60e3);
     setTimeout(scan, 2500);
   }
-  return {init, scan, bars, layers, openDetails, closeDetails};
+  return {init, scan, bars, layers, openDetails, closeDetails, sync};
 })();
 
 load();
