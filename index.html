@@ -56,6 +56,10 @@
   :root{--hz-ink:#0B1018;--hz-teal:#3FD1C2;--hz-amber:#FFB547;--hz-tx:#EEF2F6;--hz-mut:#8FA2B4;--hz-line:#2A3846}
   body.hz:not(.hz-open) .hdr, body.hz:not(.hz-open) #tabs, body.hz #lyr, body.hz:not(.hz-open) .vcol.l, body.hz:not(.hz-open) #sheet{display:none!important}
   #hz{display:none}
+  button,a,[role=button],[role=slider]{touch-action:manipulation}
+  /* لما تلمس الخريطة، الواجهة تصير شفافة وتطلع لك الخريطة كاملة */
+  #hzTop,#hzLayers,#hzBot{transition:opacity .28s var(--ease-out)}
+  body.hz-ghost #hzTop,body.hz-ghost #hzLayers,body.hz-ghost #hzBot{opacity:.12;pointer-events:none;transition:opacity .14s ease}
   body.hz #hz{display:block}
   body.hz.hz-open #hz{display:none}
   /* أشياء الواجهة القديمة اللي كانت تطلع فوق الأفق */
@@ -72,14 +76,14 @@
   #hzH{margin:0;font-family:"Readex Pro",sans-serif;font-weight:600;font-size:28px;line-height:1.3;letter-spacing:-.3px;color:#F4F7FA;max-width:350px;text-wrap:balance;transition:opacity .25s ease}
   #hzP{margin:0;font-size:15px;line-height:1.6;color:#C3CFDA;max-width:330px}
   #hzActs{display:flex;gap:8px;margin-top:8px;align-items:center}
-  .hzb{height:44px;min-width:44px;border-radius:22px;border:1px solid var(--hz-line);background:rgba(11,16,24,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:var(--hz-tx);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:inherit;font-size:15px;transition:transform 160ms var(--ease-out),background-color .2s ease}
+  .hzb{height:44px;min-width:44px;border-radius:22px;border:1px solid var(--hz-line);background:rgba(11,16,24,.86);color:var(--hz-tx);display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;font:inherit;font-size:15px;transition:transform 160ms var(--ease-out),background-color .2s ease}
   .hzb:active{transform:scale(.97)}
   .hzb svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .hzb.go{background:var(--hz-teal);border-color:transparent;color:#062521;font-weight:600;padding:0 18px}
   .hzb.go[hidden]{display:none}
   .hzb.ic{padding:0;width:44px}
   #hzLayers{position:fixed;right:16px;left:16px;bottom:calc(env(safe-area-inset-bottom) + 200px);z-index:20;display:flex;gap:6px;flex-wrap:wrap}
-  #hzLayers button{height:34px;padding:0 13px;border-radius:17px;border:1px solid var(--hz-line);background:rgba(11,16,24,.75);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);color:#B9C6D2;font:inherit;font-size:13px;transition:transform 160ms var(--ease-out),background-color .2s ease,color .2s ease}
+  #hzLayers button{height:34px;padding:0 13px;border-radius:17px;border:1px solid var(--hz-line);background:rgba(11,16,24,.86);color:#B9C6D2;font:inherit;font-size:13px;transition:transform 160ms var(--ease-out),background-color .2s ease,color .2s ease}
   #hzLayers button.on{background:var(--hz-tx);color:var(--hz-ink);border-color:transparent;font-weight:600}
   #hzLayers button:active{transform:scale(.97)}
   #hzBot{position:fixed;left:0;right:0;bottom:0;z-index:19;padding:34px 20px calc(env(safe-area-inset-bottom) + 18px);background:linear-gradient(to top,var(--hz-ink) 72%,rgba(11,16,24,0));display:flex;flex-direction:column;gap:10px;cursor:pointer}
@@ -1441,8 +1445,9 @@ function show(i){
   fi = Math.max(0, Math.min(i, steps.length-1));
   const t = steps[fi], nt = steps[(fi+1) % steps.length];
   const rp = lyrOn.rad ? radAt(t) : null, sp = lyrOn.sat ? satAt(t) : null;
-  // الرادار: كل الإطارات تبقى محمّلة (مخفية)، فالسحب على الوقت يطلع الصورة على طول
-  const needR = new Set(lyrOn.rad ? steps.map(radAt).filter(Boolean) : []);
+  // الرادار: الحالي واللي بعده على الخريطة، والباقي محمّل مسبقاً في ذاكرة المتصفح
+  const needR = new Set([rp, lyrOn.rad ? radAt(nt) : null].filter(Boolean));
+  prefetchRadar();
   // القمر الصناعي أثقل: الحالي واللي جنبه بس
   const needS = new Set(lyrOn.sat ? [-2,-1,0,1,2].map(k=>satAt(steps[Math.max(0,Math.min(steps.length-1,fi+k))])).filter(Boolean) : []);
   for(const p of [...onMap.rad]) if(!needR.has(p)){ dropRaster(rid(p)); onMap.rad.delete(p); }
@@ -1458,6 +1463,20 @@ function show(i){
   placeBubble();
   try{ HZ.sync(); }catch(e){}
   $('tlSrc').textContent = `${ag? `قبل ${Math.floor(ag/60)? Math.floor(ag/60)+' س ':''}${ag%60? ag%60+' د':''}` : 'آخر رصد'} · ${rp?'📡 رادار':''}${rp&&sp?' + ':''}${sp?'🛰️ قمر':''}${!rp&&!sp?'ما فيه بيانات لهالوقت':''}${!rp&&lyrOn.rad&&ag>120?' (الرادار يحفظ ساعتين)':''}`;
+}
+// نحمّل صور كل إطارات الرادار للمنطقة الظاهرة مرة وحدة، فلما تسحب على الوقت تطلع فوراً
+const prefetched = new Set();
+function prefetchRadar(){
+  if(!map || !rvHost || !lyrOn.rad || !frames.length) return;
+  const z = Math.max(0, Math.min(7, Math.floor(map.getZoom()))), n = 2**z, b = map.getBounds();
+  const tx = lo => Math.floor((lo+180)/360*n), ty = la => Math.floor((1-Math.log(Math.tan(la*Math.PI/180)+1/Math.cos(la*Math.PI/180))/Math.PI)/2*n);
+  const x0 = tx(b.getWest()), x1 = tx(b.getEast()), y0 = Math.max(0, ty(b.getNorth())), y1 = Math.min(n-1, ty(b.getSouth()));
+  if((x1-x0+1)*(y1-y0+1) > 30) return;
+  for(const f of frames) for(let x=x0; x<=x1; x++) for(let y=y0; y<=y1; y++){
+    const u = `${rvHost}${f.path}/256/${z}/${(x+n)%n}/${y}/2/1_1.png`;
+    if(prefetched.has(u)) continue; prefetched.add(u);
+    const im = new Image(); im.decoding = 'async'; im.src = u;
+  }
 }
 function stopPlay(){ clearInterval(timer); timer=null; $('rPlay').textContent='▶'; $('rPlay').classList.remove('on'); if(map && steps.length) show(fi); }
 $('rPlay').onclick = () => {
@@ -2350,6 +2369,9 @@ const EI = (() => {
   const svg = k => { const [n,c] = M[k].split('|'); return `<svg class="ei${c?' '+c:''}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`; };
   const SKIP = {SCRIPT:1,STYLE:1,TEXTAREA:1,OPTION:1,TITLE:1,INPUT:1,svg:1};
   function fix(node){
+    // اللي داخل الخريطة (علامات وكتابة) ما نمسحه: يخفف الشغل وقت تحريك الخريطة
+    const host = node.nodeType===1 ? node : node.parentElement;
+    if(host && host.closest && host.closest('#map')) return;
     if(node.nodeType===3){
       const t = node.nodeValue; RE.lastIndex = 0;
       if(!RE.test(t)) return;
@@ -2504,7 +2526,12 @@ const HZ = (() => {
     el('hzWhen').innerHTML = ag ? `قبل ${Math.floor(ag/60)?Math.floor(ag/60)+' س ':''}${ag%60?ag%60+' د':''} · ${new Date(t).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'})} · ${src}` : `<b>الحين</b> · ${src}`;
     el('hzPlay').classList.toggle('on', !!timer);
   }
+  let rafX = null;
   function scrubAt(x){
+    if(rafX === null) requestAnimationFrame(()=>{ const v = rafX; rafX = null; scrubNow(v); });
+    rafX = x;
+  }
+  function scrubNow(x){
     const n = steps.length; if(!n) return;
     const r = el('hzPast').getBoundingClientRect(), pad = 8;
     const f = Math.max(0, Math.min(1, (r.right - pad - x) / (r.width - pad*2)));
@@ -2540,6 +2567,17 @@ const HZ = (() => {
     el('hzBot').onkeydown = e=>{ if(e.key==='Enter') openDetails('now'); };
     el('hzBack').onclick = closeDetails;
     bindScrub();
+    // نربط الشفافية أول ما تجهز الخريطة
+    const hook = ()=>{
+      if(!map){ setTimeout(hook, 500); return; }
+      let gT; const ghost = on=>{ clearTimeout(gT); if(on) document.body.classList.add('hz-ghost'); else gT = setTimeout(()=>document.body.classList.remove('hz-ghost'), 450); };
+      const c = map.getCanvasContainer();
+      c.addEventListener('touchstart', ()=>ghost(true), {passive:true});
+      c.addEventListener('mousedown', ()=>ghost(true));
+      ['touchend','touchcancel','mouseup'].forEach(ev=>c.addEventListener(ev, ()=>{ if(!map.isMoving()) ghost(false); }, {passive:true}));
+      map.on('moveend', ()=>{ ghost(false); prefetchRadar(); });
+    };
+    hook();
     window.addEventListener('resize', ()=>{ try{ sync(); }catch(e){} });
     setInterval(scan, 60e3);
     setTimeout(scan, 2500);
