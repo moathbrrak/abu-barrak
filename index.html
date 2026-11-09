@@ -57,6 +57,20 @@
   body.hz:not(.hz-open) .hdr, body.hz:not(.hz-open) #tabs, body.hz #lyr, body.hz:not(.hz-open) .vcol.l, body.hz:not(.hz-open) #sheet{display:none!important}
   #hz{display:none}
   button,a,[role=button],[role=slider]{touch-action:manipulation}
+
+  /* توقع المطر على الخريطة */
+  #hzFc{position:fixed;right:16px;left:16px;bottom:calc(env(safe-area-inset-bottom) + 246px);z-index:20;display:none;gap:4px;padding:4px;border-radius:14px;background:rgba(11,16,24,.9);border:1px solid var(--hz-line)}
+  body.hz-fc #hzFc{display:flex}
+  #hzFc button{flex:1;height:36px;border:0;border-radius:10px;background:transparent;color:#B9C6D2;font:inherit;font-size:13px;transition:background-color .2s ease,color .2s ease,transform 160ms var(--ease-out)}
+  #hzFc button.on{background:var(--hz-tx);color:var(--hz-ink);font-weight:600}
+  #hzFc button:active{transform:scale(.97)}
+  #hzLayers button.fc.on{background:var(--hz-amber);color:#2A1A00}
+  .fcspot{padding:3px 8px;border-radius:10px;background:#0B1018;border:1.5px solid var(--hz-amber);color:#FFD596;font:600 12px/1.3 "Readex Pro",sans-serif;white-space:nowrap;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.5)}
+  #fcLegend{position:fixed;left:16px;bottom:calc(env(safe-area-inset-bottom) + 292px);z-index:20;display:none;align-items:center;gap:6px;font-size:11px;color:var(--hz-mut);background:rgba(11,16,24,.9);padding:5px 9px;border-radius:10px;border:1px solid var(--hz-line)}
+  body.hz-fc #fcLegend{display:flex}
+  #fcLegend i{width:12px;height:10px;border-radius:2px;display:inline-block}
+  body.hz-ghost #hzFc,body.hz-ghost #fcLegend{opacity:.12;pointer-events:none;transition:opacity .5s cubic-bezier(.4,0,.2,1)}
+  #hzFc,#fcLegend{transition:opacity .8s cubic-bezier(.4,0,.2,1)}
   /* لما تلمس الخريطة، الواجهة تصير شفافة وتطلع لك الخريطة كاملة */
   #hzTop,#hzLayers,#hzBot{transition:opacity .8s cubic-bezier(.4,0,.2,1)}
   body.hz-ghost #hzTop,body.hz-ghost #hzLayers,body.hz-ghost #hzBot{opacity:.12;pointer-events:none;transition:opacity .5s cubic-bezier(.4,0,.2,1)}
@@ -445,6 +459,10 @@
       <button class="hzb ic" id="hzSearch" aria-label="ابحث عن مكان"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
       <button class="hzb ic" id="hzMenu" aria-label="المزيد"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
     </div>
+  </div>
+  <div id="fcLegend"></div>
+  <div id="hzFc" role="group" aria-label="مدة التوقع">
+    <button data-w="3">3 س</button><button data-w="6">6 س</button><button data-w="12">12 س</button><button data-w="24">24 س</button><button data-w="w">أسبوع</button>
   </div>
   <div id="hzLayers"></div>
   <div id="hzBot" role="button" tabindex="0" aria-label="التفاصيل والتوقعات">
@@ -2418,6 +2436,112 @@ const EI = (() => {
   fix(document.body);
   return {svg, fix};
 })();
+
+// =====================================================================
+//  توقع المطر التراكمي على الخريطة (3 / 6 / 12 / 24 ساعة / أسبوع)
+//  الشبكة يجهزها GitHub كل 6 ساعات (fc.json على R2)
+// =====================================================================
+const FC = (() => {
+  const SCALE = [[0.2,'rgba(63,209,194,.30)'],[1,'rgba(63,209,194,.55)'],[5,'rgba(47,140,255,.70)'],[10,'rgba(255,181,71,.80)'],[25,'rgba(255,120,60,.85)'],[50,'rgba(255,70,120,.90)']];
+  const NAME = {'3':'خلال 3 ساعات','6':'خلال 6 ساعات','12':'خلال 12 ساعة','24':'خلال 24 ساعة','w':'خلال أسبوع'};
+  let data = null, at = 0, win = ls.get('fcWin','24'), on = false, vals = null, spots = [], ids = [];
+  const color = v => { let c = null; for(const [t,col] of SCALE) if(v >= t) c = col; return c; };
+  async function load(){
+    if(data && Date.now()-at < 20*60e3) return data;
+    const r = await fetch(MAP_HOST + '/fc.json?_=' + Math.floor(Date.now()/600e3), {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    data = await r.json(); at = Date.now(); return data;
+  }
+  function compute(){
+    const d = data, n = d.nx*d.ny, out = new Float32Array(n);
+    const off = Math.max(0, Math.floor((Date.now() - new Date(d.start).getTime())/3600e3));
+    for(let k=0;k<n;k++){
+      if(win==='w'){ let s=0; for(const v of d.d[k]||[]) s+=v; out[k]=s; }
+      else { const h = d.h[k]||[], L = +win; let s=0; for(let i=off;i<off+L && i<h.length;i++) s+=h[i]; out[k]=s; }
+    }
+    return out;
+  }
+  function draw(){
+    clear();
+    if(!on || !data || !map) return;
+    vals = compute();
+    // صورة وحدة ناعمة: نحسب كل بكسل على إسقاط الخريطة ونمزج بين نقاط الشبكة
+    const d = data, K = 6, W = d.nx*K, H = d.ny*K;
+    const n = d.lat0 + d.step/2, so = d.lat0 - (d.ny-1)*d.step - d.step/2, w = d.lon0 - d.step/2, e = d.lon0 + (d.nx-1)*d.step + d.step/2;
+    const my = la => Math.log(Math.tan(Math.PI/4 + la*Math.PI/360)), yN = my(n), yS = my(so);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const g = cv.getContext('2d'), img = g.createImageData(W, H), px = img.data;
+    const at = (r,c) => vals[Math.max(0,Math.min(d.ny-1,r))*d.nx + Math.max(0,Math.min(d.nx-1,c))];
+    const rgba = SCALE.map(([t,col])=>{ const m = col.match(/[\d.]+/g).map(Number); return [t, m[0], m[1], m[2], Math.round(m[3]*255)]; });
+    for(let y=0; y<H; y++){
+      const la = (2*Math.atan(Math.exp(yN + (yS-yN)*(y+.5)/H)) - Math.PI/2)*180/Math.PI;
+      const fr = (d.lat0 - la)/d.step, r0 = Math.floor(fr), tr = fr - r0;
+      for(let x=0; x<W; x++){
+        const fc = (w + (e-w)*(x+.5)/W - d.lon0)/d.step, c0 = Math.floor(fc), tc = fc - c0;
+        const v = (at(r0,c0)*(1-tc) + at(r0,c0+1)*tc)*(1-tr) + (at(r0+1,c0)*(1-tc) + at(r0+1,c0+1)*tc)*tr;
+        let col = null; for(const q of rgba) if(v >= q[0]) col = q;
+        if(!col) continue;
+        const i = (y*W + x)*4; px[i]=col[1]; px[i+1]=col[2]; px[i+2]=col[3]; px[i+3]=col[4];
+      }
+    }
+    g.putImageData(img, 0, 0);
+    map.addSource('fc', {type:'image', url: cv.toDataURL(), coordinates:[[w,n],[e,n],[e,so],[w,so]]});
+    map.addLayer({id:'fc', type:'raster', source:'fc', paint:{'raster-resampling':'linear','raster-fade-duration':0,'raster-opacity':.9}}, 'a-rad');
+    ids.push('fc');
+    // أقوى الأماكن: علامات صغيرة تضغطها وتوجهك لها
+    const thr = win==='w' ? 15 : (+win>=24 ? 8 : 4), peaks = [];
+    for(let r=1;r<d.ny-1;r++) for(let c=1;c<d.nx-1;c++){
+      const k = r*d.nx+c, v = vals[k]; if(v < thr) continue;
+      let top = true; for(let a=-1;a<=1&&top;a++) for(let b=-1;b<=1;b++){ if((a||b) && vals[(r+a)*d.nx+c+b] > v){ top=false; break; } }
+      if(top) peaks.push({v, lat: d.lat0 - r*d.step, lon: d.lon0 + c*d.step});
+    }
+    peaks.sort((a,b)=>b.v-a.v).slice(0,6).forEach(p=>{
+      const el = document.createElement('div'); el.className = 'fcspot'; el.textContent = Math.round(p.v) + ' مم';
+      el.addEventListener('click', e=>{ e.stopPropagation(); popup(p.lat, p.lon, p.v); });
+      spots.push(new maplibregl.Marker({element:el}).setLngLat([p.lon,p.lat]).addTo(map));
+    });
+    legend();
+  }
+  function clear(){
+    if(map) ids.forEach(id=>{ if(map.getLayer(id)) map.removeLayer(id); if(map.getSource(id)) map.removeSource(id); });
+    ids = []; spots.forEach(m=>m.remove()); spots = [];
+  }
+  function legend(){
+    const ago = data ? Math.round((Date.now()-new Date(data.made).getTime())/3600e3) : 0;
+    $('fcLegend').innerHTML = `<span>${NAME[win]}</span>` + SCALE.slice(0,5).map(([t,c])=>`<i style="background:${c}"></i>${t>=1?t:''}`).join('') + `<span>مم${ago>=1?` · قبل ${ago} س`:''}</span>`;
+  }
+  let pop = null;
+  function popup(lat, lon, v){
+    if(pop) pop.remove();
+    pop = new maplibregl.Popup({offset:10}).setLngLat([lon,lat])
+      .setHTML(`<b>🌧️ متوقع ${r1(v)} مم ${NAME[win]}</b><br><span style="opacity:.65">حسب نماذج التوقع، دقة الشبكة تقريباً 55 كم</span><br>${navLink(lat, lon)}`).addTo(map);
+  }
+  function valueAt(lat, lon){
+    if(!on || !vals || !data) return null;
+    const r = Math.round((data.lat0 - lat)/data.step), c = Math.round((lon - data.lon0)/data.step);
+    if(r<0||c<0||r>=data.ny||c>=data.nx) return null;
+    return vals[r*data.nx+c];
+  }
+  async function set(o, w){
+    if(w) { win = w; ls.set('fcWin', w); }
+    on = o; document.body.classList.toggle('hz-fc', on);
+    document.querySelectorAll('#hzFc button').forEach(b=>b.classList.toggle('on', b.dataset.w===win));
+    if(!on){ clear(); return; }
+    try{ await load(); draw(); }
+    catch(e){ $('fcLegend').innerHTML = '<span>التوقع لسا ما جهز، جرب بعد شوي</span>'; }
+  }
+  function init(){
+    $('hzFc').onclick = e=>{ const b = e.target.closest('button'); if(b) set(true, b.dataset.w); };
+    const hook = ()=>{
+      if(!map){ setTimeout(hook, 500); return; }
+      // تضغط على منطقة ملونة: يطلع لك كم متوقع، وزر «خذني هنا»
+      map.on('click', e=>{ const v = valueAt(e.lngLat.lat, e.lngLat.lng); if(v != null && v >= 0.2) popup(e.lngLat.lat, e.lngLat.lng, v); });
+      setInterval(()=>{ if(on) load().then(draw).catch(()=>{}); }, 15*60e3);
+    };
+    hook();
+  }
+  return {init, set, get on(){ return on; }};
+})();
 // =====================================================================
 //  واجهة «الأفق»: الخريطة كاملة، جملة وحدة تقول الأهم، وخط زمني للمطر
 // =====================================================================
@@ -2577,7 +2701,8 @@ const HZ = (() => {
     el('hzPlay').addEventListener('click', e=>{ e.stopPropagation(); $('rPlay').click(); sync(); });
   }
   function layers(){
-    el('hzLayers').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button data-k="${k}" class="${lyrOn[k]?'on':''}" aria-pressed="${!!lyrOn[k]}">${v.name}</button>`).join('');
+    el('hzLayers').innerHTML = Object.entries(LYR).filter(([,v])=>v.main).map(([k,v])=>`<button data-k="${k}" class="${lyrOn[k]?'on':''}" aria-pressed="${!!lyrOn[k]}">${v.name}</button>`).join('')
+      + `<button data-fc="1" class="fc ${FC.on?'on':''}" aria-pressed="${FC.on}">توقع</button>`;
   }
   function openDetails(p){ document.body.classList.add('hz-open'); setPane(p||'now'); openSheet(true); }
   function closeDetails(){ document.body.classList.remove('hz-open'); setSheet('hid'); }
@@ -2585,7 +2710,7 @@ const HZ = (() => {
     document.body.classList.add('hz');
     setSheet('hid');
     layers();
-    el('hzLayers').onclick = e=>{ const b = e.target.closest('button'); if(!b) return; toggleLyr(b.dataset.k); layers(); };
+    el('hzLayers').onclick = e=>{ const b = e.target.closest('button'); if(!b) return; if(b.dataset.fc){ FC.set(!FC.on).then(layers); layers(); return; } toggleLyr(b.dataset.k); layers(); };
     el('hzGo').onclick = ()=>{ if(target) openNav(target.lat, target.lon); };
     el('hzLoc').onclick = ()=>{ const b = el('bLoc'); if(b) b.click(); };
     el('hzSearch').onclick = ()=>openDetails('pl');
@@ -2614,6 +2739,7 @@ const HZ = (() => {
 
 load();
 HZ.init();
+FC.init();
 openRadar();
 document.addEventListener('visibilitychange', ()=>{
   if(document.visibilityState!=='visible') return;
